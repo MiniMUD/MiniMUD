@@ -1,0 +1,210 @@
+@use "sass:map";
+@import "bootstrap/scss/bootstrap";
+
+.keyicon {
+    @extend .text-center;
+    min-width: 32px;
+}
+
+.font-native {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+$background-base: #282b30;
+
+$background: lighten($background-base, 0%);
+$background-input: darken($background-base, 4%);
+$input-border: darken($background-input, 8%);
+
+$background-button: lighten($background-input, 24%);
+$button-border: lighten($background-input, 16%);
+
+$embed-bar-color: lighten($background-base, 8%);
+
+.console {
+    background-color: $background;
+    max-width: 100vw !important;
+
+    .console-output {
+        @extend .font-monospace;
+        // @extend .font-native;
+        @extend .py-4;
+        @extend .px-4;
+        font-size: 12pt;
+        max-width: 100vw !important;
+        overflow-y: scroll;
+        overflow-wrap: break-word;
+    }
+    
+    .console-input {
+        border-top-style: solid;
+        border-top-width: 1px;
+        border-top-color: $input-border;
+        background-color: $background-input;
+
+        .input-group {
+
+            .input-group-text {
+                border: none;
+                border-radius: 0;
+            }
+            
+            input {
+                @extend .font-monospace;
+                border: none;
+                border-radius: 0;
+            }
+        }
+
+        .menu-item {
+            @extend .font-monospace;
+            min-width: 64px;
+
+            .btn {
+                @extend .bold;
+                @extend .text-capitalize;
+                padding: 0.25rem;
+                min-height: 32px;
+                min-width: 32px;
+                line-height: 80%;
+
+                font-size: 14pt;
+                border-color: $button-border;
+                border-width: 1px;
+                background-color: $background-button;
+                border-bottom-width: 4px;
+            }
+
+            .btn:hover {
+                background-color: $background-button;
+                border-bottom-width: 5px;
+            }
+
+            .btn:active, .btn-click {
+                transform: translateY(2px);
+                border-bottom-width: 1px;
+            }
+        }
+    }
+}
+
+.console {
+    .text-subtle {
+        font-weight: lighter;
+        opacity: .75;
+    }
+
+    .bold {
+        @extend .fw-bold;
+    }
+    
+    .italic {
+        @extend .fst-italic;
+    }
+
+    .text {
+        @extend .font-monospace;
+    }
+
+    .embed {
+        @extend .font-native;
+        @extend .my-1;
+        @extend .ps-3;
+        @extend .ms-1;
+        border-left: solid;
+        border-color: $embed-bar-color;
+        border-width: 2px;
+    }
+
+    .invisable {
+        visibility: hidden;
+    }
+}
+
+.console.console-server {
+    .console-output {
+        font-size: 10pt;
+    }
+
+    .debug-entity {
+        font-weight: bold;
+        color: $blue-100;
+    }
+    
+    .debug-object {
+        font-weight: bold;
+        color: $yellow-100;
+    }
+}
+
+.console.console-client {
+    .proper-noun {
+        @extend .font-monospace;
+        // @extend .bold;
+    }
+    .proper-noun.first-person {
+        color: #ffc64b;
+        font-style: italic;
+    }
+    .proper-noun.player {
+        color: #66aaff;
+        font-style: italic;
+    }
+    .proper-noun.npc {
+        color: #aa66ff;
+        font-style: italic;
+    }
+
+    .proper-noun.room {
+        color: #80ff8b;
+    }
+
+    $color-object: #ff4876;
+    $value: 16%;
+    $color: -12deg;
+
+    .proper-noun.prop {
+        color: adjust-color($color: $color-object, $lightness: $value);
+    }
+    .proper-noun.item {
+        color: adjust-color($color: $color-object);
+    }
+    .proper-noun.chest {
+        color: adjust-color($color: $color-object, $hue: $color, $lightness: $value);
+    }
+    .proper-noun.backpack {
+        color: adjust-color($color: $color-object, $hue: $color);
+    }
+}
+
+body {
+    background-color: $background;
+}
+
+.jumbo {
+    background-color: darken($background-base, 8%);
+
+    .btn-start {
+        border-color: darken($primary, 16%);
+        border-width: 1px;
+        border-bottom-width: 4px;
+
+        $outline-blur: 2px;
+        $outline-color: rgba(0,0,0,0.2);
+
+        text-shadow:
+            1px 1px $outline-blur $outline-color,
+            1px -1px $outline-blur $outline-color,
+            -1px 1px $outline-blur $outline-color,
+            -1px -1px $outline-blur $outline-color;
+    }
+
+    .btn-start:active {
+        transform: translateY(2px);
+        border-bottom-width: 1px;
+    }
+
+    .btn-start:hover {
+        background-color: lighten($primary, 4%);
+    }
+}

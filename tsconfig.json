@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "outDir": "./build/",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "module": "es6",
+        "target": "ES2016",
+        "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+
+        "baseUrl": "src",
+        "paths": {
+            "@assets/*": ["assets/*"],
+
+            "@/*": ["ts/*"],
+            "@html/*": ["html/*"],
+            "@scss/*": ["scss/*"],
+
+            "@common/*": ["ts/common/*"],
+            "@host/*": ["ts/host/*"],
+            "@client/*": ["ts/client/*"],
+
+            "@modules/*": ["ts/host/modules/*"]
+        }
+    }
+}

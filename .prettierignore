@@ -1,0 +1,12 @@
+# Ignore artifacts:
+build
+coverage
+
+# Ignore html
+public
+*.html
+
+# Ignore css
+*.css
+*.scss
+*.sass
