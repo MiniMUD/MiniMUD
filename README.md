@@ -1,4 +1,4 @@
-# MiniMUD
+# MiniMUD [minimud.github.io](minimud.github.io)
 
 ## Building
 ### Prerequisites
