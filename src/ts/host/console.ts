@@ -365,8 +365,8 @@ export default class ModuleServerConsole extends ServerModule {
                             value: () => this.ask('Encode Entity', 'key', 'same-as-decoder (leave blank to remove)'),
                         }),
                         (res) => {
-                            if (nullike(res.value)) this.game.encoded.delete(res.entity);
-                            this.game.encoded.set(res.entity, res.value);
+                            if (nullike(res.value) || res.value === '') this.game.encoded.delete(res.entity);
+                            else this.game.encoded.set(res.entity, res.value);
                         }
                     ),
             },
@@ -379,8 +379,8 @@ export default class ModuleServerConsole extends ServerModule {
                             value: () => this.ask('Make Decoder', 'key', 'same-as-encoded (leave blank to remove)'),
                         }),
                         (res) => {
-                            if (nullike(res.value)) this.game.decoder.delete(res.entity);
-                            this.game.decoder.set(res.entity, res.value);
+                            if (nullike(res.value) || res.value === '') this.game.decoder.delete(res.entity);
+                            else this.game.decoder.set(res.entity, res.value);
                         }
                     ),
                 keybind: 'd',

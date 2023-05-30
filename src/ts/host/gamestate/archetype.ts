@@ -158,6 +158,8 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
     }
 
     private wrap(target: string): InstanceProperties<Properties> {
+        const about = this.gamestate.about(target);
+
         const obj = {} as CleanupIntersections<
             {
                 [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
@@ -180,6 +182,15 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
         Object.defineProperty(obj, '_id', {
             get() {
                 return target;
+            },
+        });
+
+        Object.assign(obj, {
+            valueOf() {
+                return target;
+            },
+            toString() {
+                return about;
             },
         });
 

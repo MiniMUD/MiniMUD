@@ -176,12 +176,14 @@ export default class ModuleClient extends ServerModule {
                 items.push({ text: 'Whisper', value: '/commands/whisper' });
             }
             if (!items.length) return;
-            items.push({
-                text: 'Back',
-                value: '/commands/look/room',
-                keybind: 'Escape',
-                keyicon: 'ESC',
-            });
+            if (server.game.room.is(options.context)) {
+                items.push({
+                    text: 'Refresh',
+                    value: '/commands/look/room',
+                });
+            } else {
+                items.push(BACK);
+            }
             res.redirectMenu('Commands', items);
         });
 
@@ -210,7 +212,9 @@ export default class ModuleClient extends ServerModule {
             const doors = server.game.doors(server.game.parent.get(player));
             res.redirectMenu('Move', [
                 ...doors.map((door) => ({
-                    text: server.game.name.get(server.game.reference.get(door)),
+                    text: server.game.canRead(server.game.reference.get(door), player)
+                        ? server.game.name.get(server.game.reference.get(door))
+                        : server.game.direction.get(door),
                     value: `/commands/move/${server.game.direction.get(door)}`,
                 })),
                 BACK,
@@ -218,8 +222,13 @@ export default class ModuleClient extends ServerModule {
         });
 
         api.command('/commands/move/:direction', ({ res, req, options, player }) => {
-            server.game.movePlayerDirection(player, options.direction);
-            lookCommand(res, `move ${options.direction}`, server.game.roomOf(player), player);
+            const door = server.game.getDoor(server.game.roomOf(player), options.direction);
+            if (server.game.locked.get(door)) {
+                res.textContent(`${server.game.about(server.game.reference.get(door))} is locked.`);
+            } else {
+                server.game.movePlayerDirection(player, options.direction);
+                lookCommand(res, `move ${options.direction}`, server.game.roomOf(player), player);
+            }
         });
 
         api.command('/commands/list_take/:context', ({ req, res, options, player }) => {
