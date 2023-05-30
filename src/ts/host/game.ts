@@ -116,7 +116,7 @@ export class Game {
     public eventEntityMove = this.events
         .channel('entity-move', (target: Entity, lastContainer: Entity, currentContainer: Entity) => {})
         .on((target, lastContainer, currentContainer) => {
-            if (this.player.is(target)) {
+            if (this.player.is(target) || this.npc.is(target)) {
                 if (nullike(lastContainer) || nullike(currentContainer)) {
                     this.playerTeleport(target, lastContainer, currentContainer);
                 } else {

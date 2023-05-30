@@ -24,7 +24,7 @@ export default class ModuleClient extends ServerModule {
             return style(
                 str
                     .split(' ')
-                    .map((x) => charset(hashNumbers(x).slice(0, x.length + 1), lowercase))
+                    .map((x) => charset(hashNumbers(x).slice(0, x.length), lowercase))
                     .join(' '),
                 s.glitch
             );
@@ -176,7 +176,12 @@ export default class ModuleClient extends ServerModule {
                 items.push({ text: 'Whisper', value: '/commands/whisper' });
             }
             if (!items.length) return;
-            items.push(BACK);
+            items.push({
+                text: 'Back',
+                value: '/commands/look/room',
+                keybind: 'Escape',
+                keyicon: 'ESC',
+            });
             res.redirectMenu('Commands', items);
         });
 
@@ -335,7 +340,7 @@ export default class ModuleClient extends ServerModule {
             });
 
             game.playerMove.on((target, from, to) => {
-                game.interupt(target);
+                if (game.player.is(target)) game.interupt(target);
                 game.foreachPlayerIn(from, (player) => {
                     if (target === player) return;
                     game.send(player, inline(printName(target, player), ' left the room'));
@@ -347,14 +352,13 @@ export default class ModuleClient extends ServerModule {
             });
 
             game.playerTeleport.on((target, from, to) => {
-                game.interupt(target);
-                game.send(
-                    target,
-                    lines(
-                        inline(printName(target, target), ` teleported to ${game.about(to)}`),
-                        ...renderLookCommand('look', game.roomOf(target), target)
-                    )
-                );
+                if (game.player.is(target)) {
+                    game.interupt(target);
+                    // game.send(target, inline(printName(target, target), ` teleported to ${game.about(to)}`));
+                    setTimeout(() => {
+                        game.send(target, lines(...renderLookCommand('look', game.roomOf(target), target)));
+                    });
+                }
                 game.foreachPlayerIn(from, (player) => {
                     if (target === player) return;
                     game.send(player, inline(printName(target, player), ' vanished'));

@@ -1,4 +1,4 @@
-import { block, divider, inline, style } from './element';
+import { ElementDescriptor, block, divider, inline, style } from './element';
 
 export namespace s {
     export const bold = ['bold'];
@@ -30,9 +30,14 @@ export namespace s {
         style(
             block(
                 style(inline(divider()), ['w-100', 'px-4']),
-                style(text, title),
+                style(text, [...title, 'chapter-title']),
                 style(inline(divider()), ['w-100', 'px-4'])
             ),
-            ['d-flex', 'flex-row', 'w-100', 'justify-content-center', 'align-items-center']
+            ['d-flex', 'flex-row', 'w-100', 'justify-content-center', 'align-items-center', 'my-1', 'mt-4']
         );
+
+    export const center = (el: ElementDescriptor) =>
+        style(block(el), ['d-flex', 'flex-row', 'w-100', 'justify-content-center', 'align-items-center']);
+
+    export const subtitle = (text: string) => center(style(text, ['fs-6', ...italic]));
 }

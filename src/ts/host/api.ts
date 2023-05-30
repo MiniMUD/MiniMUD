@@ -101,7 +101,6 @@ export default class ModuleApi extends ServerModule {
             if (server.game.command(server.game.authenticate, username, token)) {
                 res.header['clear-console'] = 'true';
                 res.header['token'] = token;
-                res.sequence('/describe/room');
                 this.startSession(token, connection);
 
                 setTimeout(() => {

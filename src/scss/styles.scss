@@ -133,6 +133,10 @@ $embed-bar-color: lighten($background-base, 8%);
         border-width: 2px;
     }
 
+    .chapter-title {
+        @extend .font-native;
+    }
+
     .invisable {
         visibility: hidden;
     }

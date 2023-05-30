@@ -8,6 +8,7 @@ import { Accessor, ReadonlyFlag } from './gamestate/accessor';
 import { t } from '@/common/runtime-types';
 import { s, style } from '@/common/console';
 import { nullike } from '@/util/gaurd';
+import { ElementDescriptor, lines } from '@/common/console/element';
 
 export class ScriptError extends Error {}
 
@@ -211,6 +212,14 @@ export class ScriptingContext {
         }
     }
 
+    public send(target: Player, message: ElementDescriptor | string) {
+        this.game.send(target._id, style(message));
+    }
+
+    public chapter(player: Player, title: string, subtitle: string) {
+        this.send(player, lines(s.chapter(title), s.subtitle(subtitle)));
+    }
+
     public roomOf(player: GenericEntity) {
         return this.cast(this.game.room, { _id: this.game.roomOf(player._id) });
     }
@@ -235,6 +244,14 @@ export class ScriptingContext {
         for (const e of this.game.filter(...args)) {
             yield { _id: e };
         }
+    }
+
+    public players() {
+        return Array.from(this.entities(this.game.player)).map((e) => this.game.player.cast(e._id));
+    }
+
+    public forEachPlayer(callback: (player: Player) => void) {
+        for (const player of this.players()) callback(player);
     }
 
     public readonly util = {
