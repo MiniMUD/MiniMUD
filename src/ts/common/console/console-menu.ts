@@ -114,7 +114,7 @@ export class ConsoleMenu<T> {
             }
         };
 
-        target.presentInput(
+        const res = target.presentInput(
             container,
             lock.promise,
             () => {
@@ -124,6 +124,7 @@ export class ConsoleMenu<T> {
                 window.removeEventListener('keydown', eventListener);
             }
         );
+        res.catch(() => result.resolve(null));
         return result.promise;
     }
 }

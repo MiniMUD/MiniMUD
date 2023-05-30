@@ -14,6 +14,7 @@ export namespace s {
     export const title = ['fs-2', ...lead];
 
     export const subtle = ['text-subtle'];
+    export const glitch = ['text-glitch'];
 
     export const proper_noun = ['proper-noun'];
     export const first_person = [...proper_noun, 'first-person'];

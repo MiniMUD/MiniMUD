@@ -5,26 +5,18 @@ const server = new Server({
     consoleElement,
     load: require('@assets/level.minimud').default,
     motd: 'Welcome!',
+    logConnections: true,
 });
 
-server.script((ctx)=>{
-    const butler = ctx.npc('Butler');
-    const hallway = ctx.room('Hallway');
+server.script((ctx) => {
+    const earth = ctx.room('earth');
+    const containment = ctx.room('containment');
 
-    ctx.on.npc.greet(butler, (player) => {
+    ctx.on.player.enter(earth, (player) => {
         ctx.util.sequence(player, [
-            [1, ()=>butler.say(`Welcome ${player.name}!`), true],
-            [2, ()=>butler.whisper(player, `Move upstairs to "Hallway" when you're ready to start exploring.`), true],
-            [2, ()=>butler.whisper(player, `Press "M" to open the move menu, and "H" to select hallway.`), true],
+            [0.5, () => ctx.tell(player, 'You are blinded by a bright light')],
+            [1, () => ctx.move(player, containment)],
         ]);
-    });
-
-    let last = 0;
-    ctx.on.player.enter(hallway, async (player)=>{
-        if (await ctx.util.playerMovesInTheNextNSeconds(player, Math.random()*8)) return;
-        if (Date.now() - last < 10000) return;
-        last = Date.now();
-        ctx.tell(hallway, `The floorboards creak as ${player.name} steps on them.`);
     });
 });
 

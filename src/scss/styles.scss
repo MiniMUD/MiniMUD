@@ -1,4 +1,5 @@
 @use "sass:map";
+@use "sass:math";
 @import "bootstrap/scss/bootstrap";
 
 .keyicon {
@@ -88,10 +89,26 @@ $embed-bar-color: lighten($background-base, 8%);
     }
 }
 
+@keyframes glitch{
+    2%,64%{
+      transform: translate(2px,0) skew(0deg);
+    }
+    4%,60%{
+      transform: translate(-2px,0) skew(0deg);
+    }
+    62%{
+      transform: translate(0,0) skew(5deg); 
+    }
+  }
+
 .console {
     .text-subtle {
         font-weight: lighter;
         opacity: .75;
+    }
+
+    .text-glitch {
+        display: inline-block;
     }
 
     .bold {
@@ -141,6 +158,10 @@ $embed-bar-color: lighten($background-base, 8%);
     .proper-noun {
         @extend .font-monospace;
         // @extend .bold;
+        text-transform: capitalize;
+    }
+    .proper-noun:first-letter {
+        text-transform: uppercase;
     }
     .proper-noun.first-person {
         color: #ffc64b;

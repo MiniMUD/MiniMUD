@@ -47,6 +47,11 @@ export class MessageWriter<M extends Method> {
         this.content = content;
     }
 
+    public sequence(...paths: string[]) {
+        this.header[CONTENT_TYPE] = sequenceContentType;
+        this.content = paths;
+    }
+
     public build() {
         return {
             header: this.header,
@@ -72,11 +77,6 @@ export class ResponseWriter extends MessageWriter<Method.RESPONSE> {
     public redirect(path: string) {
         this.status = Status.REDIRECT;
         this.header.path = path;
-    }
-
-    public sequence(...paths: string[]) {
-        this.header[CONTENT_TYPE] = sequenceContentType;
-        this.content = paths;
     }
 
     public badRequest(reason?: string) {

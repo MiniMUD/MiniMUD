@@ -1,6 +1,6 @@
 import { Dispatcher, RequestWriter, ResponseReader } from '@common/message';
 import { EventChannel } from '@/util/event-channel';
-import { MessageRequest, MessageResponse, Method } from '@/common/message/message';
+import { MessageRequest, MessageResponse, Method, messageRequest } from '@/common/message/message';
 
 export abstract class Connection {
     protected dispatcher = new Dispatcher();
@@ -23,6 +23,10 @@ export abstract class Connection {
     }
 
     public request(req: MessageRequest): Promise<ResponseReader> {
+        if (!messageRequest.is(req)) {
+            console.warn(req);
+            throw new Error(`invalid request: ${JSON.stringify(req)}`);
+        }
         return new Promise((resolve, reject) => {
             const response = this.dispatcher.request(req);
             response

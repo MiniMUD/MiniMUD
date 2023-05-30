@@ -92,7 +92,7 @@ export default class ModuleApi extends ServerModule {
             if (server.game.find(username)) {
                 if (!server.game.player.is(server.game.find(username))) {
                     res.sequence(`/login/incorrect_password/${username}`, '/login');
-                    return
+                    return;
                 }
             } else {
                 server.game.command(server.game.createPlayer, username);

@@ -39,6 +39,11 @@ export class Accessor<T = unknown, N extends string = string> {
         return this.store.delete(target, this.component.hash);
     }
 
+    public ensure(target: Entity, defaultValue: T) {
+        if (!this.has(target)) this.set(target, defaultValue);
+        return this.get(target);
+    }
+
     public test(target: string) {
         if (nullike(target)) return false;
         return this.has(target);

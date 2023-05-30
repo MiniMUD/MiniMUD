@@ -45,6 +45,7 @@ export default class Server {
 
     // events
     public loaded = this.events.channel('loaded', () => {});
+    public ready = this.events.channel('ready', () => {});
 
     private scriptingContext: ScriptingContext;
 
@@ -155,6 +156,7 @@ export default class Server {
 
         this.game.command(this.game.theVoid);
         this.loaded();
+        this.ready();
     }
 
     public module(module: ServerModule) {
@@ -167,8 +169,8 @@ export default class Server {
         });
     }
 
-    public script(script: (ctx: ScriptingContext)=>void) {
-        this.loaded.on(()=>{
+    public script(script: (ctx: ScriptingContext) => void) {
+        this.loaded.on(() => {
             try {
                 script(this.scriptingContext);
             } catch (err) {

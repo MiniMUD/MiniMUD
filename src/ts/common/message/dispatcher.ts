@@ -4,7 +4,7 @@ import { getID } from '@/util/id';
 import { nullike } from '@/util/gaurd';
 
 export class Dispatcher {
-    public timeout_ms = 5000;
+    public timeout_ms = 10000;
 
     private awaiting = new Map<string, Deferred<MessageResponse>>();
 
@@ -13,7 +13,7 @@ export class Dispatcher {
         const id = req.header.id || getID();
         req.header.id = id;
         this.awaiting.set(id, response);
-        response.timeout(this.timeout_ms);
+        response.timeout(this.timeout_ms, `${req.header.method} ${req.header.path} timeout`);
         return response.promise;
     }
 

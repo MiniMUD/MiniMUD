@@ -61,15 +61,15 @@ export default class ModuleServerConsole extends ServerModule {
                         'Editor',
                         {
                             text: 'File',
-                            value: this.file,
+                            value: async () => await this.file(),
                         },
                         {
                             text: 'Edit',
-                            value: this.edit,
+                            value: async () => await this.edit(),
                         },
                         {
                             text: 'View',
-                            value: this.view,
+                            value: async () => await this.view(),
                         }
                     ),
             }
@@ -122,7 +122,7 @@ export default class ModuleServerConsole extends ServerModule {
         );
 
     public objects = async () =>
-        await this.menu(
+        await this.submenu(
             'Objects',
             {
                 text: 'Create',
@@ -161,7 +161,11 @@ export default class ModuleServerConsole extends ServerModule {
             },
             {
                 text: 'Move',
-                value: this.move,
+                value: async () => await this.move(),
+            },
+            {
+                text: 'Mutation',
+                value: async () => await this.mutation(),
             },
             {
                 text: 'Show List',
@@ -177,38 +181,48 @@ export default class ModuleServerConsole extends ServerModule {
         );
 
     public npc = async () =>
-            this.submenu(
-                'NPC',
-                {
-                    text: 'Create',
-                    value: async () =>
-                        gaurd(
-                            await form({
-                                name: () => this.getEntityName('Create NPC', 'Name', 'name'),
-                            }),
-                            (res) => this.game.createNPC(res.name),
-                        ),
-                }
-            )
+        this.submenu('NPC', {
+            text: 'Create',
+            value: async () =>
+                gaurd(
+                    await form({
+                        name: () => this.getEntityName('Create NPC', 'Name', 'name'),
+                    }),
+                    (res) => this.game.createNPC(res.name)
+                ),
+        });
 
     private edit = async () =>
         this.submenu(
             'Edit',
             {
                 text: 'Rooms',
-                value: this.rooms,
+                value: async () => await this.rooms(),
             },
             {
                 text: 'Objects',
-                value: this.objects,
+                value: async () => await this.objects(),
             },
             {
                 text: 'NPCs',
-                value: this.npc,
+                value: async () => await this.npc(),
             },
             {
                 text: 'Move',
-                value: this.move,
+                value: async () => await this.move(),
+            },
+            {
+                text: 'Tags',
+                value: async () =>
+                    await gaurd(
+                        await form({
+                            entity: () => this.search('Set Tag', 'entity', 'name'),
+                            value: () => this.ask('Set Tag', 'tag', 'tag value'),
+                        }),
+                        (res) => {
+                            this.game.setTag(res.entity, res.value);
+                        }
+                    ),
             },
             {
                 text: 'Rename',
@@ -230,6 +244,10 @@ export default class ModuleServerConsole extends ServerModule {
                         }),
                         (res) => this.game.destroyEntity(res.target)
                     ),
+            },
+            {
+                text: 'Encoding',
+                value: async () => await this.encoding(),
             }
         );
 
@@ -285,7 +303,7 @@ export default class ModuleServerConsole extends ServerModule {
                 container: () => this.search('Move', 'Container', 'container', [this.game.children]),
             }),
             (res) => this.game.command(this.game.move, res.target, res.container)
-        )
+        );
     }
 
     private async getEntityName(title: string, label: string, placeholder: string) {
@@ -312,7 +330,11 @@ export default class ModuleServerConsole extends ServerModule {
 
         for (const [key, value] of Object.entries(this.game.state.inspect(target))) {
             if (value !== undefined) {
-                this.server.log(` - ${key}:`, this.game.resolveArg(value));
+                if (key === 'mutation') {
+                    this.server.log(` - ${key}: ${JSON.stringify(value)}`);
+                } else {
+                    this.server.log(` - ${key}:`, this.game.resolveArg(value));
+                }
             }
         }
 
@@ -329,6 +351,58 @@ export default class ModuleServerConsole extends ServerModule {
             }
         }
         this.server.divider();
+    }
+
+    private async encoding() {
+        await this.submenu(
+            'Encoding',
+            {
+                text: 'Encode Entity',
+                value: async () =>
+                    await gaurd(
+                        await form({
+                            entity: () => this.search('Encode Entity', 'entity', 'name'),
+                            value: () => this.ask('Encode Entity', 'key', 'same-as-decoder (leave blank to remove)'),
+                        }),
+                        (res) => {
+                            if (nullike(res.value)) this.game.encoded.delete(res.entity);
+                            this.game.encoded.set(res.entity, res.value);
+                        }
+                    ),
+            },
+            {
+                text: 'Make Decoder',
+                value: async () =>
+                    await gaurd(
+                        await form({
+                            entity: () => this.search('Make Decoder', 'entity', 'name'),
+                            value: () => this.ask('Make Decoder', 'key', 'same-as-encoded (leave blank to remove)'),
+                        }),
+                        (res) => {
+                            if (nullike(res.value)) this.game.decoder.delete(res.entity);
+                            this.game.decoder.set(res.entity, res.value);
+                        }
+                    ),
+                keybind: 'd',
+            }
+        );
+    }
+
+    private async mutation() {
+        await gaurd(
+            await form({
+                entity: () => this.search('Mutation', 'Entity', 'name', [this.game.object]),
+                key: () => this.ask('Mutation', 'key', 'key'),
+                value: () => this.ask('Mutation', 'value', 'value'),
+            }),
+            (res) => {
+                if (res.key.includes(' ')) {
+                    this.server.error('key cannot contain spaces');
+                    return;
+                }
+                this.game.mutation.ensure(res.entity, {})[res.key] = res.value;
+            }
+        );
     }
 
     private directions(left: string, right: string) {
@@ -363,7 +437,7 @@ export default class ModuleServerConsole extends ServerModule {
                 value: adjacencyRelation.below,
                 keybind: 'b',
             },
-        ]
+        ];
     }
 
     private async link() {

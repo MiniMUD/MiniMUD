@@ -32,6 +32,10 @@ export class Game {
     public token = this.state.bind(Gamestate.Component.string('token'));
     public direction = this.state.bind(Gamestate.Component.string('direction'));
     public locked = this.state.bind(Gamestate.Component.boolean('locked'));
+    public tag = this.state.bind(Gamestate.Component.string('tag'));
+    public encoded = this.state.bind(Gamestate.Component.string('encoded'));
+    public decoder = this.state.bind(Gamestate.Component.string('decoder'));
+    public mutation = this.state.bind(Gamestate.Component.record(t.string, t.string, 'mutation'));
 
     // flags
     public void = this.state.bindFlag(Gamestate.Component.flag('void')); // the default room
@@ -43,10 +47,7 @@ export class Game {
     public carryable = this.state.archetype('carryable').compile();
     public placeable = this.state.archetype('placeable').extends(this.container).compile();
     public player = this.state.archetype('player').extends(this.node).add(this.name).add(this.token).compile();
-    public npc = this.state.archetype('npc')
-        .extends(this.node)
-        .add(this.name)
-        .compile();
+    public npc = this.state.archetype('npc').extends(this.node).add(this.name).compile();
     public room = this.state
         .archetype('room')
         .extends(this.container)
@@ -74,28 +75,41 @@ export class Game {
 
     // derivative events
     public playerMove = this.events.channel('player-move', (player: Entity, from: Entity, to: Entity) => {}, true);
-    public playerTeleport = this.events.channel('player-teleport', (player: Entity, from: Entity, to: Entity) => {}, true);
+    public playerTeleport = this.events.channel(
+        'player-teleport',
+        (player: Entity, from: Entity, to: Entity) => {},
+        true
+    );
 
     public objectTeleported = this.events.channel(
         'object-teleported',
-        (object: Entity, from: Entity, toRoom: Entity) => {}, true
+        (object: Entity, from: Entity, toRoom: Entity) => {},
+        true
     );
     public objectDropped = this.events.channel(
         'object-dropped',
-        (object: Entity, byPlayer: Entity, toRoom: Entity) => {}, true
+        (object: Entity, byPlayer: Entity, toRoom: Entity) => {},
+        true
     );
     public objectTaken = this.events.channel(
         'object-taken',
-        (object: Entity, fromRoom: Entity, byPlayer: Entity) => {}, true
+        (object: Entity, fromRoom: Entity, byPlayer: Entity) => {},
+        true
     );
     public objectGiven = this.events.channel(
         'object-given',
-        (object: Entity, byPlayer: Entity, toPlayer: Entity) => {}, true
+        (object: Entity, byPlayer: Entity, toPlayer: Entity) => {},
+        true
     );
-    public objectPut = this.events.channel('object-put', (object: Entity, byPlayer: Entity, toObject: Entity) => {}, true);
+    public objectPut = this.events.channel(
+        'object-put',
+        (object: Entity, byPlayer: Entity, toObject: Entity) => {},
+        true
+    );
     public objectTakenFrom = this.events.channel(
         'object-taken-from',
-        (object: Entity, fromObject: Entity, byPlayer: Entity) => {}, true
+        (object: Entity, fromObject: Entity, byPlayer: Entity) => {},
+        true
     );
 
     // events
@@ -155,6 +169,7 @@ export class Game {
     public sessionEnd = this.events.channel('session-end', (target: Entity) => {});
     public whisper = this.events.channel('whisper', (target: Entity, src: Entity, msg: string) => {});
     public say = this.events.channel('say', (target: Entity, src: Entity, msg: string) => {});
+    public interupt = this.events.channel('interupt', (target: Entity) => {});
 
     // caches
     private entityNameCache = new AccessorCache<string, Entity>(
@@ -163,6 +178,14 @@ export class Game {
             return undefined;
         },
         (name, entity) => this.name.get(entity) === name
+    );
+
+    private entityTagCache = new AccessorCache<string, Entity>(
+        (tag) => {
+            for (const entity of this.state.entities()) if (this.tag.get(entity) === tag) return entity;
+            return undefined;
+        },
+        (tag, entity) => this.tag.get(entity) === tag
     );
 
     private sessions = new AccessorCache<string, Entity>(
@@ -378,6 +401,12 @@ export class Game {
         return this.roomOf(this.parent.get(target));
     }
 
+    public playerOf(target: Entity): Entity {
+        if (this.player.is(target)) return target;
+        if (!this.parent.has(target)) return undefined;
+        return this.playerOf(this.parent.get(target));
+    }
+
     /**
      * Check if two rooms are equal. If either entity is not a room the room containing it will be checked instead.
      * @returns true if both entities are in the same room.
@@ -427,8 +456,12 @@ export class Game {
      * Delete doors between two rooms.
      */
     public disconnectRooms(left: Entity, right: Entity) {
-        this.doors(left).filter((x)=>this.reference.get(x) === right).forEach((door)=>this.destroyEntity(door));
-        this.doors(right).filter((x)=>this.reference.get(x) === left).forEach((door)=>this.destroyEntity(door));
+        this.doors(left)
+            .filter((x) => this.reference.get(x) === right)
+            .forEach((door) => this.destroyEntity(door));
+        this.doors(right)
+            .filter((x) => this.reference.get(x) === left)
+            .forEach((door) => this.destroyEntity(door));
         this.logCommand('disconnect-rooms', [left, right], undefined);
     }
 
@@ -514,12 +547,55 @@ export class Game {
         return this.sessions.get(token);
     }
 
+    public canRead(target: Entity, player: Entity) {
+        if (!this.encoded.has(target)) return true;
+        const encoded = this.encoded.get(target);
+        return this.findIn(player, (x) => this.decoder.get(x) === encoded);
+    }
+
+    public inVision(target: Entity, player: Entity) {
+        if (target === player) return true;
+        const targetPlayerContainer = this.playerOf(target);
+        const targetRoomContainer = this.roomOf(target);
+        const playerRoomContainer = this.roomOf(player);
+
+        if (targetRoomContainer !== playerRoomContainer) return false;
+        if (targetPlayerContainer && targetPlayerContainer !== player) return false;
+        return true;
+    }
+
+    public readableChildObjects(target: Entity, perspective: Entity) {
+        return this.children.get(target)?.filter((e) => this.object.is(e) && this.canRead(e, perspective)) ?? [];
+    }
+
     /**
      * Find an entity by exact name
-     * @param name
      */
     public find(name: string): Entity | undefined {
         return this.entityNameCache.get(name);
+    }
+
+    public findIn(container: Entity, predicate: (entity: Entity) => boolean): Entity {
+        return this.children
+            .get(container)
+            ?.find((x) => predicate(x) || (this.children.has(x) ? this.findIn(container, predicate) : false));
+    }
+
+    /**
+     * Find an entity by exact tag
+     */
+    public get(tag: string): Entity | undefined {
+        return this.entityTagCache.get(tag);
+    }
+
+    /**
+     * Set the tag for an entity
+     */
+    public setTag(entity: Entity, tag: string) {
+        if (this.get(tag)) {
+            throw new RuntimeError(`tag "${tag}" already in use`);
+        }
+        this.tag.set(entity, tag);
     }
 
     /**

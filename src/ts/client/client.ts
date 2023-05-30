@@ -5,7 +5,7 @@ import { EventChannel } from '@/util/event-channel';
 import mergeOptions from 'merge-options';
 import { encode } from '@/util/hash';
 import { Header, Method, RequestWriter, ResponseReader, Status } from '@/common/message';
-import { menuField, textInputField } from '@/common/message/content-type';
+import { CONTENT_TYPE, menuField, textInputField } from '@/common/message/content-type';
 import { form } from '@/util/form';
 import { nullike } from '@/util/gaurd';
 
@@ -44,8 +44,12 @@ export default class Client {
             const header = { token };
 
             const next = async () => {
-                const res = await this.get(path, header);
-                await this.present(res, header);
+                try {
+                    const res = await this.get(path, header);
+                    await this.present(res, header);
+                } catch (err) {
+                    console.error(err);
+                }
                 if (res.status === Status.OK) setTimeout(next, 0);
             };
             next();
@@ -57,8 +61,23 @@ export default class Client {
                 }
             });
             await req.catch(() => {
-                throw new Error();
+                throw new Error(JSON.stringify(req));
             });
+        });
+        this.api.post('/interrupt', async ({ req, res }) => {
+            this.console.interuptInput();
+            const token = req.header.token;
+            const header = { token };
+            const start = async () => {
+                await req.sequence(async (redirect) => {
+                    const res = await this.get(redirect, header);
+                    await this.present(res, header);
+                });
+                await req.catch((errs) => {
+                    console.error(req.header[CONTENT_TYPE]);
+                });
+            };
+            start();
         });
     }
 

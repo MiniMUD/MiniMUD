@@ -38,17 +38,14 @@ export class MessageReader<T extends MessageAny> {
 
     public async readContent<T>(tstr: string, tx: RuntimeType<T>, callback: (content: T) => void) {
         if (this.header[CONTENT_TYPE] !== tstr) return false;
-        try {
-            await callback(tx.cast(this.content));
+        let x: T;
+
+        if (tx.is(this.content)) {
+            await callback(this.content);
             this.handled = true;
             return true;
-        } catch (err) {
-            if (err instanceof RuntimeTypeError) {
-                console.warn(err);
-                this.errors.push(err);
-                return false;
-            }
-            throw err;
+        } else {
+            this.errors.push(new Error(tstr));
         }
     }
 

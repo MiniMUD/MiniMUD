@@ -8,12 +8,16 @@ export async function gaurd<T, R>(x: T | Promise<T>, safe: (x: T) => R): Promise
 }
 
 export function includesCharacters(str: string, characters: string) {
-    return Array.from(characters).some((x)=>str.includes(x));
+    return Array.from(characters).some((x) => str.includes(x));
 }
 
 export function onlyusesCharacters(str: string, characters: string) {
-    return Array.from(str).every((x)=>characters.includes(x));
+    return Array.from(str).every((x) => characters.includes(x));
 }
 
-export const alphanumeric = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+export const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+export const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+export const numbers = '1234567890';
+export const alphabet = lowercase + uppercase;
+export const alphanumeric = alphabet + numbers;
 export const alphanumeric_ext = alphanumeric + '_';

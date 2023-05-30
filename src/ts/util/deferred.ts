@@ -32,7 +32,7 @@ export class Deferred<T> {
 
     public timeout(ms: number, reason?: string) {
         setTimeout(() => {
-            if (this.waiting) this.reject(new ErrorTimeout(reason));
+            if (this.waiting) this.reject(new ErrorTimeout(reason ?? 'Timeout'));
         }, ms);
     }
 }

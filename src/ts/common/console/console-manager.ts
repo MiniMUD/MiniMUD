@@ -113,17 +113,24 @@ export class ConsoleManager {
     }
 
     public presentInput(el: HTMLElement, promise: Promise<unknown>, ready: () => void, cleanup: () => void) {
-        this.inputLock.push(async () => {
+        const task = async () => {
             this.input.replaceChildren(el);
             this.enableInput();
             this.resizeInput();
             ready();
             await promise;
+        };
+        const _cleanup = () => {
             cleanup();
             this.disableInput();
-            // this.input.replaceChildren();
-            // this.hideInput();
-        });
+        };
+        const taskPromise = this.inputLock.push(task);
+        taskPromise.then(_cleanup).catch(_cleanup);
+        return taskPromise;
+    }
+
+    public interuptInput() {
+        this.inputLock.interupt();
     }
 
     private injectSpaces(arr: HTMLElement[]): (HTMLElement | Text)[] {
@@ -147,7 +154,7 @@ export class ConsoleManager {
         this.output.appendChild(createElement('div', { children, classList: ['w-100'] }));
 
         if (wasScrolledToBottom) this.scrollToBottom();
-        setTimeout(()=>{
+        setTimeout(() => {
             if (wasScrolledToBottom) this.scrollToBottom();
         });
     }

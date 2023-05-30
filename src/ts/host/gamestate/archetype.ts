@@ -85,13 +85,15 @@ export class ArchetypeCastError extends Error {}
 
 export type GenericEntity = {
     _id: string;
-}
+};
 
-export type InstanceProperties<Properties extends Record<string, Accessor>> = CleanupIntersections<{
-    [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
-} & {
-    _id: string;
-}>;
+export type InstanceProperties<Properties extends Record<string, Accessor>> = CleanupIntersections<
+    {
+        [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
+    } & {
+        _id: string;
+    }
+>;
 
 export type Instance<A extends Archetype<{}>> = A extends Archetype<infer Properties>
     ? InstanceProperties<Properties>
@@ -156,11 +158,13 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
     }
 
     private wrap(target: string): InstanceProperties<Properties> {
-        const obj = {} as CleanupIntersections<{
-            [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
-        } & {
-            _id: string;
-        }>;
+        const obj = {} as CleanupIntersections<
+            {
+                [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
+            } & {
+                _id: string;
+            }
+        >;
 
         for (const [key, accessor] of Object.entries(this.accessors)) {
             Object.defineProperty(obj, key, {
@@ -178,7 +182,7 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
                 return target;
             },
         });
-        
+
         return obj;
     }
 
@@ -193,9 +197,11 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
     public cast(
         target: Entity,
         name?: string
-    ): CleanupIntersections<{
-        [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
-    } & {_id: string}> {
+    ): CleanupIntersections<
+        {
+            [k in keyof Properties]: Properties[k] extends Accessor<infer T> ? T : never;
+        } & { _id: string }
+    > {
         if (!this.flag.is(target))
             throw new ArchetypeCastError(
                 `failed to cast ${name} to ${

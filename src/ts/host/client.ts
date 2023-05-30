@@ -1,11 +1,15 @@
 import { BACK, inline, s, style } from '@/common/console';
 import Server from '@/host/server';
 import { Game } from './game';
-import { Method, RequestWriter, ResponseWriter } from '@/common/message';
+import { Method, RequestWriter, ResponseWriter, Status } from '@/common/message';
 import { Entity } from './gamestate/gamestate';
 import { ElementDescriptor, block, center, divider, lines } from '@/common/console/element';
 import { ServerModule } from './server-module';
 import { MenuFieldItem } from '@/common/message/content-type';
+import { hashNumbers } from '@/util/hash';
+import { lowercase } from '@/util/gaurd';
+import { charset } from '@/util/id';
+
 export default class ModuleClient extends ServerModule {
     public name = 'Commands';
 
@@ -16,18 +20,40 @@ export default class ModuleClient extends ServerModule {
             return style(inline(...args), s.subtle);
         }
 
-        function printName(target: Entity, perspective?: Entity, you: string = 'You'): ElementDescriptor {
-            if (perspective) if (target === perspective) return style(you, s.first_person);
-            if (server.game.room.is(target)) return style(server.game.name.get(target), s.room);
-            if (server.game.npc.is(target)) return style(server.game.name.get(target), s.npc);
-            if (server.game.player.is(target)) return style(server.game.name.get(target), s.player);
-            if (server.game.backpack.is(target)) return style(server.game.name.get(target), s.backpack);
-            if (server.game.chest.is(target)) return style(server.game.name.get(target), s.chest);
-            if (server.game.item.is(target)) return style(server.game.name.get(target), s.item);
-            if (server.game.prop.is(target)) return style(server.game.name.get(target), s.prop);
+        function encode(str: string) {
+            return style(
+                str
+                    .split(' ')
+                    .map((x) => charset(hashNumbers(x).slice(0, x.length + 1), lowercase))
+                    .join(' '),
+                s.glitch
+            );
+        }
 
-            if (server.game.name.has(target)) return style(server.game.name.get(target), s.proper_noun);
-            return style('unknown', s.subtle);
+        function textName(target: Entity, perspective: Entity) {
+            const name = server.game.name.get(target);
+            if (!name) return style('unknown', s.subtle);
+            if (!server.game.canRead(target, perspective)) return encode(name);
+            return style(name);
+        }
+
+        function format(target: Entity, txt?: ElementDescriptor) {
+            if (!txt) txt = style(server.game.name.get(target));
+
+            if (server.game.room.is(target)) return style(txt, s.room);
+            if (server.game.npc.is(target)) return style(txt, s.npc);
+            if (server.game.player.is(target)) return style(txt, s.player);
+            if (server.game.backpack.is(target)) return style(txt, s.backpack);
+            if (server.game.chest.is(target)) return style(txt, s.chest);
+            if (server.game.item.is(target)) return style(txt, s.item);
+            if (server.game.prop.is(target)) return style(txt, s.prop);
+            if (server.game.name.has(target)) return style(txt, s.proper_noun);
+            return txt;
+        }
+
+        function printName(target: Entity, perspective: Entity, you: string = 'You'): ElementDescriptor {
+            if (perspective) if (target === perspective) return style(you, s.first_person);
+            return format(target, textName(target, perspective));
         }
 
         function embed(container: ElementDescriptor[], callback: (res: ElementDescriptor[]) => void) {
@@ -42,11 +68,17 @@ export default class ModuleClient extends ServerModule {
 
         function look(res: ElementDescriptor[], target: Entity, perspective: Entity) {
             const game = server.game;
-            const name = target === perspective ? 'Inventory' : game.name.get(target);
+            const name =
+                target === perspective
+                    ? 'Inventory'
+                    : server.game.room.is(target)
+                    ? textName(target, perspective)
+                    : printName(target, perspective);
             const description = game.description.get(target);
 
             res.push(style(name, s.lead));
-            if (description && description.length) res.push(style(description, s.italic));
+            if (description && description.length)
+                res.push(style(server.game.canRead(target, perspective) ? description : encode(description), s.italic));
 
             if (game.children.has(target)) {
                 if (game.room.is(target)) {
@@ -54,7 +86,7 @@ export default class ModuleClient extends ServerModule {
                     for (const door of game.doors(target)) {
                         exits.push(
                             inline(
-                                printName(game.reference.get(door)),
+                                printName(game.reference.get(door), perspective),
                                 style(inline(' (', game.direction.get(door), ') '), s.subtle)
                             )
                         );
@@ -63,7 +95,7 @@ export default class ModuleClient extends ServerModule {
                 }
 
                 const children = server.game.binEntities(
-                    (game.children.get(target) || []).filter((e) => e !== perspective),
+                    game.children.get(target)?.filter((e) => e !== perspective && game.inVision(e, perspective)) ?? [],
                     [game.player, game.npc, game.prop, game.item, game.chest, game.backpack, game.object]
                 );
 
@@ -76,7 +108,7 @@ export default class ModuleClient extends ServerModule {
             }
         }
 
-        function commandEmbed(res: ResponseWriter, command: string, callback: (res: ElementDescriptor[]) => void) {
+        function createCommandEmbed(command: string, callback: (res: ElementDescriptor[]) => void) {
             const text: ElementDescriptor[] = [];
             spacer(text);
             text.push(log(command));
@@ -84,7 +116,15 @@ export default class ModuleClient extends ServerModule {
                 callback(res);
             });
             spacer(text);
-            res.textContent(...text);
+            return text;
+        }
+
+        function commandEmbed(res: ResponseWriter, command: string, callback: (res: ElementDescriptor[]) => void) {
+            res.textContent(...createCommandEmbed(command, callback));
+        }
+
+        function renderLookCommand(command: string, target: Entity, player: Entity) {
+            return createCommandEmbed(command, (res) => look(res, target, player));
         }
 
         function lookCommand(res: ResponseWriter, command: string, target: Entity, player: Entity) {
@@ -96,12 +136,7 @@ export default class ModuleClient extends ServerModule {
         });
 
         api.command('/describe/:target', ({ req, res, options, player }) => {
-            if (
-                server.game.sameRoom(options.target, player) &&
-                (server.game.room.is(options.target) ||
-                    server.game.object.is(options.target) ||
-                    options.target === player)
-            ) {
+            if (server.game.inVision(options.target, player)) {
                 lookCommand(res, `look ${server.game.name.get(options.target)}`, options.target, player);
             } else {
                 res.textContent('You cannot see that.');
@@ -122,14 +157,14 @@ export default class ModuleClient extends ServerModule {
             }
             if (
                 server.game.children.has(options.context) &&
-                server.game.children.get(options.context).some((x) => server.game.object.is(x))
+                server.game.readableChildObjects(options.context, player).some((x) => server.game.object.is(x))
             ) {
                 items.push({ text: 'Look', value: `/commands/list_look/${options.context}` });
             }
             if (
                 server.game.children.has(options.context) &&
                 !server.game.player.is(options.context) &&
-                server.game.children.get(options.context).some((x) => server.game.carryable.is(x))
+                server.game.readableChildObjects(options.context, player).some((x) => server.game.carryable.is(x))
             ) {
                 items.push({ text: 'Take', value: `/commands/list_take/${options.context}` });
             }
@@ -141,14 +176,12 @@ export default class ModuleClient extends ServerModule {
                 items.push({ text: 'Whisper', value: '/commands/whisper' });
             }
             if (!items.length) return;
-            if (!server.game.room.is(options.context)) {
-                items.push(BACK);
-            }
+            items.push(BACK);
             res.redirectMenu('Commands', items);
         });
 
         api.command('/commands/list_look/:target', ({ req, res, options, player }) => {
-            const targets = server.game.children.get(options.target);
+            const targets = server.game.readableChildObjects(options.target, player);
             res.redirectMenu('Look', [
                 ...server.game
                     .binEntities(targets, [server.game.prop, server.game.item, server.game.chest, server.game.backpack])
@@ -170,7 +203,6 @@ export default class ModuleClient extends ServerModule {
 
         api.command('/commands/list_move', ({ req, res, options, player }) => {
             const doors = server.game.doors(server.game.parent.get(player));
-            console.log(doors);
             res.redirectMenu('Move', [
                 ...doors.map((door) => ({
                     text: server.game.name.get(server.game.reference.get(door)),
@@ -186,7 +218,7 @@ export default class ModuleClient extends ServerModule {
         });
 
         api.command('/commands/list_take/:context', ({ req, res, options, player }) => {
-            const targets = server.game.children.get(options.context);
+            const targets = server.game.readableChildObjects(options.context, player);
             res.redirectMenu('Take', [
                 ...server.game
                     .binEntities(targets, [server.game.carryable, server.game.item, server.game.backpack])
@@ -200,7 +232,7 @@ export default class ModuleClient extends ServerModule {
 
         api.command('/commands/take/:target', ({ req, res, options, player }) => {
             if (
-                server.game.sameRoom(options.target, player) &&
+                server.game.inVision(options.target, player) &&
                 server.game.placeable.is(server.game.parent.get(options.target))
             ) {
                 server.game.command(server.game.take, options.target, player);
@@ -210,7 +242,7 @@ export default class ModuleClient extends ServerModule {
         });
 
         api.command('/commands/list_drop/', ({ req, res, options, player }) => {
-            const targets = server.game.children.get(player);
+            const targets = server.game.readableChildObjects(player, player);
             res.redirectMenu('Drop', [
                 ...server.game
                     .binEntities(targets, [server.game.carryable, server.game.item, server.game.backpack])
@@ -243,10 +275,13 @@ export default class ModuleClient extends ServerModule {
                 target: {
                     title: 'Whisper',
                     items: [
-                        ...server.game.filter(server.game.player).filter(x=>x!==player).map((e) => ({
-                            text: server.game.name.get(e),
-                            value: e,
-                        })),
+                        ...server.game
+                            .filter(server.game.player)
+                            .filter((x) => x !== player)
+                            .map((e) => ({
+                                text: server.game.name.get(e),
+                                value: e,
+                            })),
                         BACK,
                     ],
                 },
@@ -272,6 +307,19 @@ export default class ModuleClient extends ServerModule {
                 }
             });
 
+            game.interupt.on((target) => {
+                try {
+                    const token = server.game.token.get(target);
+                    if (api.isConnected(token)) {
+                        const req = new RequestWriter(Method.POST, { path: '/interrupt', token });
+                        // req.sequence('/describe/room');
+                        api.request(token, req);
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+
             game.sessionStart.on((target) => {
                 game.foreachPlayer((player) => {
                     if (target !== player) {
@@ -282,11 +330,12 @@ export default class ModuleClient extends ServerModule {
 
             game.sessionEnd.on((target) => {
                 game.foreachPlayer((player) => {
-                    if (target !== player) game.send(player, inline(printName(target), ' left the game'));
+                    if (target !== player) game.send(player, inline(printName(target, player), ' left the game'));
                 });
             });
 
             game.playerMove.on((target, from, to) => {
+                game.interupt(target);
                 game.foreachPlayerIn(from, (player) => {
                     if (target === player) return;
                     game.send(player, inline(printName(target, player), ' left the room'));
@@ -298,7 +347,14 @@ export default class ModuleClient extends ServerModule {
             });
 
             game.playerTeleport.on((target, from, to) => {
-                game.send(target, inline(printName(target, target), ` teleported to ${game.about(to)}`));
+                game.interupt(target);
+                game.send(
+                    target,
+                    lines(
+                        inline(printName(target, target), ` teleported to ${game.about(to)}`),
+                        ...renderLookCommand('look', game.roomOf(target), target)
+                    )
+                );
                 game.foreachPlayerIn(from, (player) => {
                     if (target === player) return;
                     game.send(player, inline(printName(target, player), ' vanished'));

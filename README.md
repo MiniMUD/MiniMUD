@@ -1,16 +1,20 @@
 # MiniMUD [minimud.github.io](minimud.github.io)
 
 ## Building
+
 ### Prerequisites
- * `Node`
- * `NPM`
+
+-   `Node`
+-   `NPM`
 
 ### Install
- * Clone repo
- * `npm install`
+
+-   Clone repo
+-   `npm install`
 
 ### Shorcuts
- * `npm run start` start development server
- * `npm run build` build to ./build
- * `npm run lint` run linter
- * `npm run test` run test suites
+
+-   `npm run start` start development server
+-   `npm run build` build to ./build
+-   `npm run lint` run linter
+-   `npm run test` run test suites
