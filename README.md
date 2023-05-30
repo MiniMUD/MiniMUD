@@ -1,4 +1,4 @@
-# MiniMUD [minimud.github.io](minimud.github.io)
+# MiniMUD [minimud.github.io](http://minimud.github.io)
 
 ## Building
 
