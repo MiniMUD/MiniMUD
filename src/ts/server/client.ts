@@ -1,5 +1,5 @@
 import { BACK, inline, s, style } from '@/common/console';
-import Server from '@/host/server';
+import Server from '@/server/server';
 import { Game } from './game';
 import { Method, RequestWriter, ResponseWriter, Status } from '@/common/message';
 import { Entity } from './gamestate/gamestate';

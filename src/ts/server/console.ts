@@ -52,7 +52,7 @@ export default class ModuleServerConsole extends ServerModule {
             },
             {
                 text: 'Save',
-                value: async () => await this.server.saveState(),
+                value: async () => await this.server.downloadSave(),
             },
             {
                 text: 'Editor',

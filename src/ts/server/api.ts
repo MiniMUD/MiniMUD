@@ -8,19 +8,22 @@ import { MessageRequest, Status } from '@/common/message/message';
 import { Entity } from './gamestate/gamestate';
 import { CleanupIntersections } from '@/util/object';
 import { alphanumeric_ext, includesCharacters, onlyusesCharacters } from '@/util/gaurd';
+import { Api } from '@/common/session/api';
 
 export type SessionContext = CleanupIntersections<HandlerContext & { player: Entity; data?: Record<string, string> }>;
 
 export default class ModuleApi extends ServerModule {
     public name = 'API v1';
 
-    public connections = new ConnectionBroker();
+    public connections: ConnectionBroker;
     public sessions = new Map<string, Connection>();
-    public public = this.connections.api;
+    public public: Api;
 
     private server: Server;
 
     public load(server: Server) {
+        this.connections = new ConnectionBroker(server.options.id);
+        this.public = this.connections.api;
         this.server = server;
         this.public.reset();
 
@@ -147,7 +150,9 @@ export default class ModuleApi extends ServerModule {
 
     public endSession(token: string) {
         const player = this.server.game.session(token);
-        this.sessions.get(token).end();
+        if (this.isConnected(token)) {
+            this.sessions.get(token).end();
+        }
         this.server.game.sessionEnd(player);
     }
 

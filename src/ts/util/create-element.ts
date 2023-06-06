@@ -4,6 +4,8 @@ export interface ElementOptions {
     children?: (HTMLElement | Text)[];
     id?: string;
     attributes?: Record<string, string>;
+    onclick?: (this: GlobalEventHandlers, ev: MouseEvent) => void;
+    disabled?: boolean;
 }
 
 export function createElement(type: 'input', options: ElementOptions): HTMLInputElement;
@@ -29,6 +31,11 @@ export function createElement(type: string, options: ElementOptions): HTMLElemen
     if (options.id) el.id = options.id;
     if (options.children) for (const child of options.children) el.appendChild(child);
     if (options.attributes) for (const [key, value] of Object.entries(options.attributes)) el.setAttribute(key, value);
+    if (options.onclick) el.onclick = options.onclick;
+    if (options.disabled) {
+        el.setAttribute('disabled', 'true');
+        el.ariaDisabled = 'true';
+    }
 
     return el;
 }

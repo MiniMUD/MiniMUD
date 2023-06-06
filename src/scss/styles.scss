@@ -233,3 +233,25 @@ body {
         background-color: lighten($primary, 4%);
     }
 }
+
+.popserver {
+    background-color: $background-base;
+
+    .list-group {
+        background-color: darken($background-base, 4%);
+        
+        .list-group-item {
+            background-color: inherit;
+            color: inherit;
+        }
+    }
+
+    .text-subtle {
+        font-weight: lighter;
+        opacity: .75;
+    }
+
+    .dropzone {
+        min-height: 64px;
+    }
+}

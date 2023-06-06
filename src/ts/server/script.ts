@@ -77,28 +77,26 @@ export class ScriptingEventContext {
         );
 
         // setup event listeners
-        server.attach((game) => {
-            game.eventEntityMove.on((target, from, to) => {
-                if (this.game.player.is(target)) {
-                    const p = this.game.player.cast(target);
-                    if (from) {
-                        this.events.player.exit.emit(from, [p]);
-                    }
-                    if (to) {
-                        this.events.player.enter.emit(to, [p]);
-                    }
+        server.game.eventEntityMove.on((target, from, to) => {
+            if (this.game.player.is(target)) {
+                const p = this.game.player.cast(target);
+                if (from) {
+                    this.events.player.exit.emit(from, [p]);
+                }
+                if (to) {
+                    this.events.player.enter.emit(to, [p]);
+                }
 
-                    for (const e of this.game.neighbors(target)) {
-                        if (this.game.npc.is(e)) {
-                            const greeted = npc_greeter_playerlist.get(e) ?? [];
-                            if (greeted.includes(target)) return;
-                            greeted.push(target);
-                            npc_greeter_playerlist.set(e, greeted);
-                            this.events.npc.greet.emit(e, [p]);
-                        }
+                for (const e of this.game.neighbors(target)) {
+                    if (this.game.npc.is(e)) {
+                        const greeted = npc_greeter_playerlist.get(e) ?? [];
+                        if (greeted.includes(target)) return;
+                        greeted.push(target);
+                        npc_greeter_playerlist.set(e, greeted);
+                        this.events.npc.greet.emit(e, [p]);
                     }
                 }
-            });
+            }
         });
     }
 }

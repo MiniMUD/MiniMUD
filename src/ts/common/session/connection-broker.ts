@@ -20,8 +20,8 @@ export class ConnectionBroker {
     public connection = new EventChannel((connection: Connection) => {});
     public ready = new EventChannel(() => {});
 
-    public constructor() {
-        this.discoveryID = window.sessionStorage.getItem('discovery_id') ?? alphanumericID(16);
+    public constructor(id?: string) {
+        this.discoveryID = id || (window.sessionStorage.getItem('discovery_id') ?? ConnectionBroker.GetID());
         window.sessionStorage.setItem('discovery_id', this.discoveryID);
         this.peerID = this.expand(this.discoveryID);
     }
@@ -83,5 +83,9 @@ export class ConnectionBroker {
 
             dataConnection.on('error', errorCallback);
         });
+    }
+
+    public static GetID() {
+        return alphanumericID(16);
     }
 }

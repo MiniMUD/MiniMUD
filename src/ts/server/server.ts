@@ -1,18 +1,32 @@
 import { default as mergeOptions } from 'merge-options';
 
-import { Game, GameOptions } from './game';
+import { Game, GameOptions, Player } from './game';
 import { ConsoleManager, style } from '../common/console';
 import { EventManager } from './event-manager/event-manager';
 
 import { ServerModule } from './server-module';
 import ModuleServerConsole from './console';
 import ModuleApi from './api';
-import { getID } from '@/util/id';
-import JSZip from 'jszip';
-import { t } from '@/common/runtime-types';
-import { saveAs } from 'file-saver';
 import ModuleClient from './client';
 import { ScriptError, ScriptingContext } from './script';
+import { Entity } from './gamestate/gamestate';
+import {
+    QuicksaveEntry,
+    autosave,
+    createLevel,
+    createSaveState,
+    deleteQuicksave,
+    download,
+    downloadQuicksave,
+    enumerateAutosaves,
+    enumerateQuicksaves,
+    purgeAutosaves,
+    quicksave,
+    readSave,
+    storeFileAsQuicksave,
+} from './save';
+import JSZip from 'jszip';
+import { getID } from '@/util/id';
 
 export interface ServerOptions extends GameOptions {
     consoleElement?: HTMLElement;
@@ -24,6 +38,11 @@ export interface ServerOptions extends GameOptions {
     logConnections: boolean;
 
     motd: string;
+
+    id: string;
+
+    keep_autosaves: number;
+    autosave_interval_seconds: number;
 }
 
 export default class Server {
@@ -46,6 +65,13 @@ export default class Server {
     // events
     public loaded = this.events.channel('loaded', () => {});
     public ready = this.events.channel('ready', () => {});
+    public playerJoin = this.events.channel('player-join', (player: Player) => {}).on(() => this.playerListChange());
+    public playerLeave = this.events.channel('player-leave', (player: Player) => {}).on(() => this.playerListChange());
+    public playerDeleted = this.events
+        .channel('player-deleted', (name: string) => {})
+        .on(() => this.playerListChange());
+    public playerListChange = this.events.channel('player-list-change', () => {});
+    public editQuicksaves = this.events.channel('edit-quicksaves', () => {});
 
     private scriptingContext: ScriptingContext;
 
@@ -56,6 +82,13 @@ export default class Server {
         this.module(new ModuleClient());
         this.api.start();
         this.load(this.options.load);
+
+        this.attach((game) => {
+            game.sessionStart.on((target) => this.playerJoin(game.player.cast(target)));
+            game.sessionEnd.on((target) => this.playerLeave(game.player.cast(target)));
+        });
+
+        setInterval(() => this.autosave, this.options.autosave_interval_seconds * 1000);
     }
 
     private setupConsole() {
@@ -79,46 +112,47 @@ export default class Server {
         return this.api.connections.url('client', 'server_id');
     }
 
-    private writeState(zip: JSZip) {
-        zip.file('gamestate.json', this.game.state.save());
-    }
-
-    private async readState(zip: JSZip) {
-        const file = zip.file('gamestate.json');
-        if (file === null) return;
-        this.game.state.load(await file.async('string'));
-    }
-
-    private writeSession(zip: JSZip) {
-        zip.file('session.json', JSON.stringify(this.id));
-    }
-
-    private async readSession(zip: JSZip) {
-        const file = zip.file('session.json');
-        if (file === null) return;
-        const data = JSON.parse(await file.async('string'));
-        if (t.string.is(data)) {
-            this.id = data;
-        }
-    }
-
-    private download(zip: JSZip, name: string) {
-        zip.generateAsync({ type: 'blob' }).then(function (blob) {
-            saveAs(blob, name);
-        });
-    }
-
-    public saveState() {
-        const zip = new JSZip();
-        this.writeSession(zip);
-        this.writeState(zip);
-        this.download(zip, 'game-save.minimud');
+    public downloadSave() {
+        download(createSaveState(this), 'game-save.minimud');
     }
 
     public exportLevel() {
-        const zip = new JSZip();
-        this.writeState(zip);
-        this.download(zip, 'level.minimud');
+        download(createLevel(this), 'level.minimud');
+    }
+
+    public async quicksave(name: string) {
+        await quicksave(this, name);
+        this.editQuicksaves();
+    }
+
+    public async autosave(name?: string) {
+        await autosave(this, name);
+        purgeAutosaves(this.options.keep_autosaves);
+        this.editQuicksaves();
+    }
+
+    public enumerateAutosaves() {
+        return enumerateAutosaves();
+    }
+
+    public enumerateQuicksaves() {
+        return enumerateQuicksaves();
+    }
+
+    public deleteQuicksave(save: QuicksaveEntry) {
+        deleteQuicksave(save);
+        this.editQuicksaves();
+    }
+
+    public async downloadQuicksave(save: QuicksaveEntry) {
+        await downloadQuicksave(save);
+    }
+
+    public async loadQuicksave(save: QuicksaveEntry) {
+        const zip = await JSZip.loadAsync(save.data, {
+            base64: true,
+        });
+        this._load(zip, save.name);
     }
 
     private ajax(url: string): Promise<Blob> {
@@ -136,20 +170,12 @@ export default class Server {
         });
     }
 
-    public async load(url?: string) {
+    private async _load(zip?: JSZip, name?: string) {
         this.resetGamestate();
 
-        if (url) {
-            this.console.debug(`loading from ${url}`);
-            try {
-                const blob = await this.ajax(url);
-                const zip = await JSZip.loadAsync(blob);
-                await this.readSession(zip);
-                await this.readState(zip);
-            } catch (err) {
-                console.error(err);
-                this.console.warn(`failed to load ${url}: ${err.message}`);
-            }
+        if (zip) {
+            this.debug(`loading from ${name}`);
+            await readSave(this, zip);
         }
 
         this.scriptingContext = new ScriptingContext(this);
@@ -157,6 +183,22 @@ export default class Server {
         this.game.command(this.game.theVoid);
         this.loaded();
         this.ready();
+    }
+
+    public async load(url?: string) {
+        try {
+            const blob = await this.ajax(url);
+            const zip = await JSZip.loadAsync(blob);
+            await this._load(zip, url);
+        } catch (err) {
+            console.error(err);
+            this.warn(`failed to load ${url}: ${err.message}`);
+        }
+    }
+
+    public async loadSaveFileToQuicksaves(file: File) {
+        await storeFileAsQuicksave(file);
+        this.editQuicksaves();
     }
 
     public module(module: ServerModule) {
@@ -182,6 +224,31 @@ export default class Server {
         });
     }
 
+    public players(): Player[] {
+        return this.game
+            .filter(this.game.player)
+            .map((x) => this.game.player.cast(x))
+            .filter((x) => !!x);
+    }
+
+    public kickPlayer(player: Entity) {
+        this.game.assert('player', player, [this.game.player]);
+        this.api.endSession(this.game.token.get(player));
+    }
+
+    public deletePlayer(player: Entity) {
+        this.game.assert('player', player, [this.game.player]);
+        const name = this.game.get(player);
+        this.kickPlayer(player);
+        this.game.destroyEntity(player);
+        this.playerDeleted(name);
+    }
+
+    public resetPassword(player: Entity) {
+        this.game.assert('player', player, [this.game.player]);
+        this.game.token.set(player, undefined);
+    }
+
     private resetGamestate() {
         this.divider();
         this.game = new Game(this.options);
@@ -200,5 +267,8 @@ export default class Server {
             consoleElement: undefined,
             motd: 'Welcome!',
             logConnections: false,
+            id: undefined,
+            keep_autosaves: 10,
+            autosave_interval_seconds: 60 * 5,
         });
 }

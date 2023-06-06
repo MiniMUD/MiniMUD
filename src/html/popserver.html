@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>MiniMUD Server</title>
+  </head>
+  <body class="bg-dark text-light popserver">
+
+    <main>
+      <div class="container">
+        <h1>MiniMUD Server</h1>
+
+        <div class="container-fluid">
+          <h2>Players</h2>
+          <div id="playerlist">
+          </div>
+        </div>
+
+        <div class="container-fluid">
+          <h2>Quicksave</h2>
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="my save" id="quicksave-name">
+            <button class="btn btn-outline-success" type="button" onclick="server.quicksave(document.getElementById('quicksave-name')?.value)">Save</button>
+          </div>
+        </div>
+
+        <div
+          class="container-fluid dropzone"
+          id="dropzone"
+        >
+          <h2>Saves</h2> Drop save files here
+          <div
+          id="savelist"
+          >
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </body>
+</html>

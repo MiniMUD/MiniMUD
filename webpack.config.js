@@ -55,13 +55,19 @@ const commonConfig = {
             import: './src/scripts/index.ts',
             dependOn: ['boostrap'],
         },
-        host: {
-            import: './src/scripts/host.ts',
+        server: {
+            import: './src/scripts/server.ts',
             dependOn: ['boostrap'],
         },
         client: {
             import: './src/scripts/client.ts',
             dependOn: ['boostrap'],
+        },
+        popserver: {
+            import: './src/scripts/popserver.ts',
+        },
+        host: {
+            import: './src/scripts/host.ts',
         },
     },
     output: {
@@ -83,14 +89,24 @@ const commonConfig = {
             template: 'src/html/index.html',
         }),
         new HtmlWebpackPlugin({
-            filename: 'host/index.html',
-            chunks: ['host', 'boostrap'],
-            template: 'src/html/host.html',
+            filename: 'server/index.html',
+            chunks: ['server', 'boostrap'],
+            template: 'src/html/server.html',
         }),
         new HtmlWebpackPlugin({
             filename: 'client/index.html',
             chunks: ['client', 'boostrap'],
             template: 'src/html/client.html',
+        }),
+        new HtmlWebpackPlugin({
+            filename: 'popserver/index.html',
+            chunks: ['popserver', 'boostrap'],
+            template: 'src/html/popserver.html',
+        }),
+        new HtmlWebpackPlugin({
+            filename: 'host/index.html',
+            chunks: ['host', 'boostrap'],
+            template: 'src/html/host.html',
         }),
     ],
     optimization: {

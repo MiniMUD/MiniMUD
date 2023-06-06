@@ -109,6 +109,10 @@ export class Table<R, C, V> {
         return new CompressedTable<R, C, V>(this).serialize();
     }
 
+    public clone() {
+        return new Table<R, C, V>(this);
+    }
+
     *[Symbol.iterator]() {
         for (const [r, row] of this.rows) yield [r, row.entries()] as [R, Iterable<[C, V]>];
     }
