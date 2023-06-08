@@ -2,8 +2,7 @@ import Server from '@/server';
 import { load, script } from './level';
 import { createElement } from '@/util/create-element';
 import { Player } from '@/server/game';
-import { QuicksaveEntry } from '@/server/save';
-import { getID } from '@/util/id';
+import { SaveFile } from '@/server/savefile';
 
 const urlParams = new URLSearchParams(window.location.search);
 const server = new Server({
@@ -96,7 +95,7 @@ const updatePlayerList = () => {
 
 server.playerListChange.on(updatePlayerList);
 
-const renderSave = (save: QuicksaveEntry) => {
+const renderSave = (save: SaveFile) => {
     return createElement('div', {
         classList: ['list-group-item', 'd-flex', 'flex-row', 'justify-content-between'],
         children: [
@@ -119,21 +118,21 @@ const renderSave = (save: QuicksaveEntry) => {
                         text: 'Load',
                         classList: ['btn', 'btn-primary'],
                         onclick() {
-                            server.loadQuicksave(save);
+                            server.load(save);
                         },
                     }),
                     createElement('button', {
                         text: 'Download',
                         classList: ['btn', 'btn-secondary'],
                         onclick() {
-                            server.downloadQuicksave(save);
+                            save.download();
                         },
                     }),
                     createElement('button', {
                         text: 'Delete',
                         classList: ['btn', 'btn-danger'],
                         onclick() {
-                            server.deleteQuicksave(save);
+                            server.store.delete(save);
                         },
                     }),
                 ],
@@ -144,7 +143,7 @@ const renderSave = (save: QuicksaveEntry) => {
 
 const updateSavelist = () => {
     const saveList = document.getElementById('savelist');
-    const saves = [...server.enumerateQuicksaves(), ...server.enumerateAutosaves()];
+    const saves = Array.from(server.store);
     saves.sort((a, b) => a.time - b.time);
     saveList.replaceChildren(
         createElement('div', {
@@ -153,7 +152,7 @@ const updateSavelist = () => {
         })
     );
 };
-server.editQuicksaves.on(updateSavelist);
+server.store.change.on(updateSavelist);
 
 server.loaded.once(() => {
     updatePlayerList();
@@ -178,7 +177,7 @@ dropzone.addEventListener('drop', (ev: DragEvent) => {
             // If dropped items aren't files, reject them
             if (item.kind === 'file') {
                 const file = item.getAsFile();
-                server.loadSaveFileToQuicksaves(file);
+                server.store.load(file);
             }
         });
     } else {

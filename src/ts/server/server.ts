@@ -10,23 +10,9 @@ import ModuleApi from './api';
 import ModuleClient from './client';
 import { ScriptError, ScriptingContext } from './script';
 import { Entity } from './gamestate/gamestate';
-import {
-    QuicksaveEntry,
-    autosave,
-    createLevel,
-    createSaveState,
-    deleteQuicksave,
-    download,
-    downloadQuicksave,
-    enumerateAutosaves,
-    enumerateQuicksaves,
-    purgeAutosaves,
-    quicksave,
-    readSave,
-    storeFileAsQuicksave,
-} from './save';
-import JSZip from 'jszip';
 import { getID } from '@/util/id';
+import { SaveManager } from './save-manager';
+import { SaveFile } from './savefile';
 
 export interface ServerOptions extends GameOptions {
     consoleElement?: HTMLElement;
@@ -52,6 +38,7 @@ export default class Server {
     public events = new EventManager();
     public api = new ModuleApi();
     public id = getID();
+    public store = new SaveManager();
 
     // console
     public error = this.events.error;
@@ -64,14 +51,13 @@ export default class Server {
 
     // events
     public loaded = this.events.channel('loaded', () => {});
-    public ready = this.events.channel('ready', () => {});
+
     public playerJoin = this.events.channel('player-join', (player: Player) => {}).on(() => this.playerListChange());
     public playerLeave = this.events.channel('player-leave', (player: Player) => {}).on(() => this.playerListChange());
     public playerDeleted = this.events
         .channel('player-deleted', (name: string) => {})
         .on(() => this.playerListChange());
     public playerListChange = this.events.channel('player-list-change', () => {});
-    public editQuicksaves = this.events.channel('edit-quicksaves', () => {});
 
     private scriptingContext: ScriptingContext;
 
@@ -81,6 +67,7 @@ export default class Server {
         this.module(this.api);
         this.module(new ModuleClient());
         this.api.start();
+        this.store.read();
         this.load(this.options.load);
 
         this.attach((game) => {
@@ -88,7 +75,7 @@ export default class Server {
             game.sessionEnd.on((target) => this.playerLeave(game.player.cast(target)));
         });
 
-        setInterval(() => this.autosave, this.options.autosave_interval_seconds * 1000);
+        setInterval(() => this.autosave(), this.options.autosave_interval_seconds * 1000);
     }
 
     private setupConsole() {
@@ -112,93 +99,35 @@ export default class Server {
         return this.api.connections.url('client', 'server_id');
     }
 
-    public downloadSave() {
-        download(createSaveState(this), 'game-save.minimud');
+    public reset() {
+        this.resetGamestate();
+        this.game.command(this.game.theVoid);
+        this.loaded();
     }
 
-    public exportLevel() {
-        download(createLevel(this), 'level.minimud');
-    }
-
-    public async quicksave(name: string) {
-        await quicksave(this, name);
-        this.editQuicksaves();
-    }
-
-    public async autosave(name?: string) {
-        await autosave(this, name);
-        purgeAutosaves(this.options.keep_autosaves);
-        this.editQuicksaves();
-    }
-
-    public enumerateAutosaves() {
-        return enumerateAutosaves();
-    }
-
-    public enumerateQuicksaves() {
-        return enumerateQuicksaves();
-    }
-
-    public deleteQuicksave(save: QuicksaveEntry) {
-        deleteQuicksave(save);
-        this.editQuicksaves();
-    }
-
-    public async downloadQuicksave(save: QuicksaveEntry) {
-        await downloadQuicksave(save);
-    }
-
-    public async loadQuicksave(save: QuicksaveEntry) {
-        const zip = await JSZip.loadAsync(save.data, {
-            base64: true,
-        });
-        this._load(zip, save.name);
-    }
-
-    private ajax(url: string): Promise<Blob> {
-        return new Promise((res, rej) => {
-            var oReq = new XMLHttpRequest();
-            oReq.open('GET', url, true);
-            oReq.responseType = 'arraybuffer';
-
-            oReq.onload = function (oEvent) {
-                var blob = new Blob([oReq.response]);
-                res(blob);
-            };
-
-            oReq.send();
-        });
-    }
-
-    private async _load(zip?: JSZip, name?: string) {
+    public async load(file?: SaveFile | string) {
         this.resetGamestate();
 
-        if (zip) {
-            this.debug(`loading from ${name}`);
-            await readSave(this, zip);
+        if (file) {
+            try {
+                if (typeof file === 'string') {
+                    this.info(`loading: ${file}`);
+                    file = await SaveFile.loadURL(file);
+                } else {
+                    this.info(`loading: ${file.name}`);
+                }
+                await file.load(this);
+            } catch (err) {
+                const name = typeof file === 'string' ? file : file.name;
+                this.error(err);
+                this.warn(`Failed to load ${name}`);
+            }
         }
 
         this.scriptingContext = new ScriptingContext(this);
-
         this.game.command(this.game.theVoid);
+        this.game.scrub();
         this.loaded();
-        this.ready();
-    }
-
-    public async load(url?: string) {
-        try {
-            const blob = await this.ajax(url);
-            const zip = await JSZip.loadAsync(blob);
-            await this._load(zip, url);
-        } catch (err) {
-            console.error(err);
-            this.warn(`failed to load ${url}: ${err.message}`);
-        }
-    }
-
-    public async loadSaveFileToQuicksaves(file: File) {
-        await storeFileAsQuicksave(file);
-        this.editQuicksaves();
     }
 
     public module(module: ServerModule) {
@@ -249,6 +178,23 @@ export default class Server {
         this.game.token.set(player, undefined);
     }
 
+    public quicksave(name: string) {
+        this.store.quicksave(this, name);
+    }
+
+    public autosave() {
+        this.store.autosave(this);
+    }
+
+    public downloadSave(name: string) {
+        SaveFile.save(this, name).download(name);
+    }
+
+    public downloadLevel(name: string) {
+        this.game.scrub();
+        SaveFile.level(this).download(name);
+    }
+
     private resetGamestate() {
         this.divider();
         this.game = new Game(this.options);
@@ -258,6 +204,10 @@ export default class Server {
         this.game.info.on((...args) => this.info(...args));
         this.game.log.on((...args) => this.log(...args));
         this.game.debug.on((...args) => this.debug(...args));
+    }
+
+    public startDebug() {
+        this.api.startLogging();
     }
 
     public static defaultOptions = (): ServerOptions =>

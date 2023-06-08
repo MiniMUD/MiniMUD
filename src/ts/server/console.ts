@@ -52,7 +52,7 @@ export default class ModuleServerConsole extends ServerModule {
             },
             {
                 text: 'Save',
-                value: async () => await this.server.downloadSave(),
+                value: async () => await this.server.downloadSave('save'),
             },
             {
                 text: 'Editor',
@@ -81,7 +81,7 @@ export default class ModuleServerConsole extends ServerModule {
             'File',
             {
                 text: 'Export',
-                value: async () => await this.server.exportLevel(),
+                value: async () => await this.server.downloadLevel('level'),
             },
             {
                 text: 'New',
@@ -220,7 +220,7 @@ export default class ModuleServerConsole extends ServerModule {
                             value: () => this.ask('Set Tag', 'tag', 'tag value'),
                         }),
                         (res) => {
-                            this.game.setTag(res.entity, res.value);
+                            this.game.command(this.game.setTag, res.entity, res.value);
                         }
                     ),
             },

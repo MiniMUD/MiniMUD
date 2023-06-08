@@ -75,6 +75,10 @@ export class Gamestate {
         return this.store.serialize().toJSON();
     }
 
+    public saveSubset(predicate: (entity: Entity) => boolean) {
+        return this.filterTable(predicate).serialize().toJSON();
+    }
+
     public load(data: string) {
         const state = Gamestate.loader.load(data);
 
@@ -153,6 +157,10 @@ export class Gamestate {
 
     public about(target: Entity) {
         return this.name.get(target) || target;
+    }
+
+    private filterTable(predicate: (entity: Entity) => boolean) {
+        return new Table<Entity, string, any>(this.store.filter(predicate));
     }
 
     static loader = new TableLoader(t.string, t.string, t.unknown);

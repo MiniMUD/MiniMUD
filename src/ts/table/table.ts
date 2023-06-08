@@ -3,8 +3,7 @@ import { CompressedTable } from './compressed-table';
 export type TableRecord<V> = Record<string, Record<string, V>>;
 
 /**
- * A 2-dimensional Map
- * rows and columns are created automatically on access
+ * A 2-dimensional Map. Rows and columns are created automatically on access.
  */
 export class Table<R, C, V> {
     private cols: Set<C> = new Set();
@@ -111,6 +110,12 @@ export class Table<R, C, V> {
 
     public clone() {
         return new Table<R, C, V>(this);
+    }
+
+    public *filter(predicate: (row: R) => boolean) {
+        for (const [row, cols] of this[Symbol.iterator]()) {
+            if (predicate(row)) yield [row, cols] as [R, Iterable<[C, V]>];
+        }
     }
 
     *[Symbol.iterator]() {

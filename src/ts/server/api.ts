@@ -4,11 +4,12 @@ import { center, s, style } from '@/common/console';
 import { Connection } from '@/common/session/connection';
 import { HandlerContext, Method, RequestWriter, ResponseReader } from '@/common/message';
 import { ServerModule } from './server-module';
-import { MessageRequest, Status } from '@/common/message/message';
+import { MessageRequest, Status, messageAny } from '@/common/message/message';
 import { Entity } from './gamestate/gamestate';
 import { CleanupIntersections } from '@/util/object';
 import { alphanumeric_ext, includesCharacters, onlyusesCharacters } from '@/util/gaurd';
 import { Api } from '@/common/session/api';
+import { extractText } from '@/common/console/element';
 
 export type SessionContext = CleanupIntersections<HandlerContext & { player: Entity; data?: Record<string, string> }>;
 
@@ -27,12 +28,7 @@ export default class ModuleApi extends ServerModule {
         this.server = server;
         this.public.reset();
 
-        if (server.options.logConnections) {
-            this.connections.connection.on((connection) => {
-                server.debug('incoming connection');
-                connection.data.on((data) => server.debug(JSON.stringify(data)));
-            });
-        }
+        if (server.options.logConnections) this.startLogging();
 
         const api = this.public;
 
@@ -197,6 +193,36 @@ export default class ModuleApi extends ServerModule {
 
     public stop() {
         this.connections.stop();
+    }
+
+    public startLogging() {
+        this.connections.connection.on((connection) => {
+            this.server.debug('incoming connection');
+            connection.data.on((data) => {
+                if (messageAny.is(data)) {
+                    if (data.header.path) {
+                        const path = data.header.path
+                            .split(/(\/|\\)/)
+                            .map((x) => this.server.game.about(x))
+                            .join('');
+                        const as = this.server.game.about(this.server.game.session(data.header.token) ?? '?');
+                        this.server.debug(`${as}: ${data.header.method} ${path}`);
+                    }
+                } else {
+                    this.server.debug(JSON.stringify(data));
+                }
+            });
+        });
+
+        this.server.game.send.on((target, message) => {
+            this.server.debug(
+                `-> ${this.server.game.about(target)}: ${extractText(message).split('\n').join(' ').slice(0, 20)}`
+            );
+        });
+
+        this.server.game.interupt.on((target) => {
+            this.server.debug(`!INT ${this.server.game.about(target)}`);
+        });
     }
 
     public get id() {

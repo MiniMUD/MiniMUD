@@ -73,6 +73,9 @@ export class Game {
         .extends(this.carryable)
         .compile();
 
+    // set of flags for entities to be ignored exporting a level but included exporting a save
+    public dynamic = [this.player];
+
     // derivative events
     public playerMove = this.events.channel('player-move', (player: Entity, from: Entity, to: Entity) => {}, true);
     public playerTeleport = this.events.channel(
@@ -165,11 +168,11 @@ export class Game {
     );
 
     public send = this.events.channel('send', (target: Entity, message: ElementDescriptor) => {}, true);
+    public interupt = this.events.channel('interupt', (target: Entity) => {}, true);
     public sessionStart = this.events.channel('session-start', (target: Entity) => {});
     public sessionEnd = this.events.channel('session-end', (target: Entity) => {});
     public whisper = this.events.channel('whisper', (target: Entity, src: Entity, msg: string) => {});
     public say = this.events.channel('say', (target: Entity, src: Entity, msg: string) => {});
-    public interupt = this.events.channel('interupt', (target: Entity) => {});
 
     // caches
     private entityNameCache = new AccessorCache<string, Entity>(
@@ -224,10 +227,44 @@ export class Game {
      */
     public destroyEntity(target: Entity) {
         if (target === undefined) return;
+        if (this.room.is(target)) {
+            for (const door of this.doors(target)) this.disconnectRooms(target, this.reference.get(door));
+        }
+        if (target === undefined) return;
         if (this.parent.has(target)) this.unlinkFromParent(target);
         if (this.children.has(target)) this.unlinkFromChildren(target);
         this.state.delete(target);
         this.logCommand('destroy', [target], undefined);
+    }
+
+    /**
+     * Remove fragments
+     */
+    public scrubEntity(target: Entity) {
+        if (this.children.has(target)) {
+            this.children.set(
+                target,
+                this.children.get(target).filter((child) => !nullike(child) && this.state.has(child))
+            );
+        }
+        if (this.parent.has(target)) {
+            const parent = this.parent.get(target);
+            if (!nullike(parent) && !this.state.has(parent)) this.parent.set(target, undefined);
+        }
+        if (this.door.is(target)) {
+            if (!this.state.has(this.parent.get(target)) || !this.state.has(this.reference.get(target)))
+                this.destroyEntity(target);
+        }
+        if (this.room.is(target)) {
+            for (const door of this.doors(target)) this.scrubEntity(door);
+        }
+    }
+
+    /**
+     * Find and remove fragments
+     */
+    public scrub() {
+        for (const e of this.state.entities()) this.scrubEntity(e);
     }
 
     /**
@@ -329,20 +366,22 @@ export class Game {
         return e;
     }
 
+    private removeChild(parent: string, target: string) {
+        // convert the children to a set
+        const children = new Set(this.children.get(parent));
+        // remove the target
+        children.delete(target);
+        // update the children
+        this.children.set(parent, Array.from(children));
+    }
+
     /**
      * Unlink an entity from its parent the hierarchy
      */
     private unlinkFromParent(target: string) {
         this.assert('target', target, [this.parent]);
         const parent = this.parent.get(target);
-        if (parent !== undefined) {
-            // convert the children to a set
-            const children = new Set(this.children.get(parent));
-            // remove the target
-            children.delete(target);
-            // update the children
-            this.children.set(parent, Array.from(children));
-        }
+        if (parent !== undefined) this.removeChild(parent, target);
         this.parent.set(target, undefined);
     }
 
@@ -475,8 +514,10 @@ export class Game {
 
     public areRoomsConnectedAndUnlocked(left: Entity, right: Entity) {
         const left_to_right = this.doors(left).find((x) => this.reference.get(x) === right);
+        if (nullike(left_to_right)) return false;
         const right_to_left = this.doors(right).find((x) => this.reference.get(x) === left);
-        return left_to_right && right_to_left && !this.locked.get(left_to_right) && !this.locked.get(right_to_left);
+        if (nullike(left_to_right)) return false;
+        return !this.locked.get(left_to_right) && !this.locked.get(right_to_left);
     }
 
     public getDoor(room: Entity, direction: string) {
@@ -663,7 +704,7 @@ export class Game {
         const archetype = this.getArchetype(target);
         const properties = this.getOwnProperties(target);
         if (properties.length) return `${archetype.name}{${properties.map((x) => x.name).join(', ')}}`;
-        else return archetype.name;
+        else return archetype?.name || 'fragment';
     }
 
     /**
@@ -848,10 +889,14 @@ export class Game {
         }
         if (typeof arg === 'string') {
             if (arg.length > this.options.eventArgumentLength) return text('[...]');
-            if (this.state.has(arg)) {
-                if (this.name.has(arg)) return inline('<', style(this.about(arg), ['debug-entity']), '>');
-                const archetype = this.getArchetype(arg);
-                return inline('<[', style(archetype.name, ['debug-entity']), text(']>'));
+            if (arg.startsWith('@')) {
+                if (this.state.has(arg)) {
+                    if (this.name.has(arg)) return inline('<', style(this.about(arg), ['debug-entity']), '>');
+                    const archetype = this.getArchetype(arg);
+                    return inline('<[', style(archetype?.name || 'fragment', ['debug-entity']), text(']>'));
+                } else {
+                    return inline('<[', style('fragment', ['text-danger']), text(']>'));
+                }
             }
             return text(`"${arg}"`);
         }

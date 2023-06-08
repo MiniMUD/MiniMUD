@@ -2,14 +2,13 @@ import Server from '@/server';
 
 export function script(server: Server) {
     server.script((ctx) => {
-        const earth = ctx.room('earth');
+        const interstate = ctx.room('interstate');
         const containment = ctx.room('containment');
         const lab = ctx.room('lab');
         const control_room = ctx.room('control_room');
         const scientist = ctx.npc('scientist');
-        const nowhere = ctx.room('nowhere');
 
-        ctx.on.player.enter(earth, (trigger) => {
+        ctx.on.player.enter(interstate, (trigger) => {
             ctx.util.sequence(trigger, [
                 [0.1, () => ctx.tell(trigger, 'You are blinded by a bright light')],
                 [

@@ -9,6 +9,7 @@ import { MenuFieldItem } from '@/common/message/content-type';
 import { hashNumbers } from '@/util/hash';
 import { lowercase } from '@/util/gaurd';
 import { charset } from '@/util/id';
+import { SessionContext } from './api';
 
 export default class ModuleClient extends ServerModule {
     public name = 'Commands';
@@ -143,11 +144,7 @@ export default class ModuleClient extends ServerModule {
             }
         });
 
-        api.command('/commands', ({ req, res, options, player }) => {
-            res.redirect(`/list_commands/${server.game.roomOf(player)}`);
-        });
-
-        api.command('/list_commands/:context', ({ req, res, options, player }) => {
+        const commands = ({ req, res, options, player }: SessionContext) => {
             const items: MenuFieldItem[] = [];
             if (server.game.room.is(options.context)) {
                 items.push({ text: 'Move', value: '/commands/list_move' });
@@ -185,7 +182,14 @@ export default class ModuleClient extends ServerModule {
                 items.push(BACK);
             }
             res.redirectMenu('Commands', items);
+        };
+
+        api.command('/commands', (ctx) => {
+            ctx.options.context = server.game.roomOf(ctx.player);
+            commands(ctx);
         });
+
+        api.command('/list_commands/:context', commands);
 
         api.command('/commands/list_look/:target', ({ req, res, options, player }) => {
             const targets = server.game.readableChildObjects(options.target, player);
@@ -340,6 +344,9 @@ export default class ModuleClient extends ServerModule {
                         game.send(player, inline(printName(target, player), ' joined the game'));
                     }
                 });
+                setTimeout(() => {
+                    game.send(target, lines(...renderLookCommand('look', game.roomOf(target), target)));
+                }, 1);
             });
 
             game.sessionEnd.on((target) => {
@@ -351,7 +358,6 @@ export default class ModuleClient extends ServerModule {
             game.playerMove.on((target, from, to) => {
                 if (game.player.is(target)) game.interupt(target);
                 game.foreachPlayerIn(from, (player) => {
-                    if (target === player) return;
                     game.send(player, inline(printName(target, player), ' left the room'));
                 });
                 game.foreachPlayerIn(to, (player) => {
@@ -363,10 +369,7 @@ export default class ModuleClient extends ServerModule {
             game.playerTeleport.on((target, from, to) => {
                 if (game.player.is(target)) {
                     game.interupt(target);
-                    // game.send(target, inline(printName(target, target), ` teleported to ${game.about(to)}`));
-                    setTimeout(() => {
-                        game.send(target, lines(...renderLookCommand('look', game.roomOf(target), target)));
-                    });
+                    game.send(target, lines(...renderLookCommand('look', game.roomOf(target), target)));
                 }
                 game.foreachPlayerIn(from, (player) => {
                     if (target === player) return;
