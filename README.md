@@ -5,8 +5,7 @@ Play at [minimud.github.io](http://minimud.github.io)
 
 ### Prerequisites
 
--   `Node`
--   `NPM`
+-   Node & NPM
 
 ### Install
 
