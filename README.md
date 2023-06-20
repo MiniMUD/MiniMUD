@@ -1,4 +1,5 @@
-# MiniMUD [minimud.github.io](http://minimud.github.io)
+# MiniMUD
+Play at [minimud.github.io](http://minimud.github.io)
 
 ## Building
 
