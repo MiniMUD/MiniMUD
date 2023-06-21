@@ -57,7 +57,7 @@ export class Game {
         .compile();
     public door = this.state
         .archetype('door')
-        .extends(this.node)
+        .extends(this.node) // TODO: change to child
         .add(this.direction)
         .add(this.locked)
         .add(this.reference)
@@ -173,6 +173,7 @@ export class Game {
     public sessionEnd = this.events.channel('session-end', (target: Entity) => {});
     public whisper = this.events.channel('whisper', (target: Entity, src: Entity, msg: string) => {});
     public say = this.events.channel('say', (target: Entity, src: Entity, msg: string) => {});
+    public change = this.events.channel('change', () => {}, true);
 
     // caches
     private entityNameCache = new AccessorCache<string, Entity>(
@@ -235,6 +236,7 @@ export class Game {
         if (this.children.has(target)) this.unlinkFromChildren(target);
         this.state.delete(target);
         this.logCommand('destroy', [target], undefined);
+        this.touch();
     }
 
     /**
@@ -412,6 +414,7 @@ export class Game {
 
         if (lastContainer === container) return;
         this.eventEntityMove(child, lastContainer, container);
+        this.touch();
     }
 
     /**
@@ -444,6 +447,14 @@ export class Game {
         if (this.player.is(target)) return target;
         if (!this.parent.has(target)) return undefined;
         return this.playerOf(this.parent.get(target));
+    }
+
+    public childrenOf(target: Entity) {
+        return this.children.get(target) || [];
+    }
+
+    public parentOf(target: Entity) {
+        return this.parent.get(target) || undefined;
     }
 
     /**
@@ -644,6 +655,13 @@ export class Game {
      */
     public filter(...accessors: ReadonlyFlag[]) {
         return this.state.filter((e) => accessors.every((accessor) => accessor.test(e)));
+    }
+
+    /**
+     * Find all entities with no parent
+     */
+    public roots(...accessors: ReadonlyFlag[]) {
+        return this.state.filter((e) => nullike(this.parentOf(e)));
     }
 
     /**
@@ -901,6 +919,15 @@ export class Game {
             return text(`"${arg}"`);
         }
         return this.resolveArg(String(arg));
+    }
+
+    /**
+     * Emit the change event.
+     */
+    public broadcastChanges: ReturnType<typeof setTimeout>;
+    public touch(ms: number = 250) {
+        clearTimeout(this.broadcastChanges);
+        this.broadcastChanges = setTimeout(() => this.change(), ms);
     }
 
     public static defaultOptions = (): GameOptions => ({

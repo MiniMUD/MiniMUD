@@ -12,6 +12,10 @@ export class Component<T = unknown, N extends string = string> {
         this.t = t.nullable(tx);
     }
 
+    public is<U>(u: RuntimeType<U>): this is Component<U, string> {
+        return this.t === (u as any);
+    }
+
     public static unknown = <N extends string>(name: N) => new Component<unknown, N>(name, t.unknown);
     public static string = <N extends string>(name: N) => new Component<string, N>(name, t.string);
     public static number = <N extends string>(name: N) => new Component<number, N>(name, t.number);

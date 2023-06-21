@@ -1,9 +1,8 @@
 import Server from '@/server';
 import { load, script } from './level';
 
-const consoleElement = document.getElementById('console');
 const server = new Server({
-    consoleElement,
+    consoleElement: document.getElementById('console'),
     load,
     motd: 'Welcome!',
     // logConnections: true,

@@ -4,9 +4,61 @@
     <meta charset="utf-8">
     <title>MiniMUD Server</title>
   </head>
-  <body class="bg-dark text-light">
+  <body class="bg-dark text-light font-native host">
 
     <main>
+      <div class="container-fluid vh-100">
+        <div class="row h-100">
+          <div class="col px-4 scroll vh-100">
+            <div class="d-flex flex-column">
+              <div class="d-flex flex-row my-2">
+                <h1>MiniMUD Server</h1>
+              </div>
+              <div class="mb-4">
+                <h5>Players</h5>
+                <div class="container-fluid">
+                  Sharable Link:
+                  <div class="input-group mb-2">
+                    <span class="input link form-control" id="copy-link" readonly>...</span>
+                    <button class="btn btn-outline-primary" type="button" id="copy-link-btn">Copy</button>
+                  </div>
+                  <div id="playerlist">
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h5>Quicksave</h5>
+                <div class="container-fluid">
+                  <div class="input-group">
+                    <input type="text" class="form-control" placeholder="untitled" id="quicksave-name">
+                    <button class="btn btn-outline-success" type="button" onclick="server.quicksave(document.getElementById('quicksave-name')?.value)">Save</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h5>Saves</h5>
+                <div class="container-fluid">
+                  <div class="dropzone" id="dropzone">
+                    <div class="w-100 d-flex justify-content-center align-items-center"><span>Drop save files here</span></div>
+                    <div class="savelist" id="savelist"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div class="col tree">
+            <div class="mb-4"><div class="lead">Tree</div> <small><i>Select to edit, drag to move.</i></small></div>
+            <div id="tree"></div>
+          </div>
+
+          <div class="col">
+            <div id="edit"></div>
+          </div>
+        </div>
+      </div>
     </main>
 
   </body>

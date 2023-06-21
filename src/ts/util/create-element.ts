@@ -1,3 +1,5 @@
+import { nullike } from './gaurd';
+
 export interface ElementOptions {
     text?: string;
     classList?: string[];
@@ -26,7 +28,7 @@ export function createElement(type: 'h6', options: ElementOptions): HTMLHeadingE
 export function createElement(type: string, options: ElementOptions): HTMLElement {
     const el = document.createElement(type);
 
-    if (options.text) el.appendChild(document.createTextNode(options.text));
+    if (!nullike(options.text)) el.appendChild(document.createTextNode(options.text));
     if (options.classList) el.classList.add(...options.classList);
     if (options.id) el.id = options.id;
     if (options.children) for (const child of options.children) el.appendChild(child);

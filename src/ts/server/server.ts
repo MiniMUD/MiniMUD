@@ -1,6 +1,6 @@
 import { default as mergeOptions } from 'merge-options';
 
-import { Game, GameOptions, Player } from './game';
+import { Game, GameOptions, Player, RuntimeError } from './game';
 import { ConsoleManager, style } from '../common/console';
 import { EventManager } from './event-manager/event-manager';
 
@@ -13,6 +13,7 @@ import { Entity } from './gamestate/gamestate';
 import { getID } from '@/util/id';
 import { SaveManager } from './save-manager';
 import { SaveFile } from './savefile';
+import { EntityTree } from './tree';
 
 export interface ServerOptions extends GameOptions {
     consoleElement?: HTMLElement;
@@ -33,6 +34,7 @@ export interface ServerOptions extends GameOptions {
 
 export default class Server {
     public options = Server.defaultOptions();
+    public hasLoaded = false;
 
     public game: Game;
     public events = new EventManager();
@@ -51,6 +53,7 @@ export default class Server {
 
     // events
     public loaded = this.events.channel('loaded', () => {});
+    public ready = this.events.channel('ready', () => {});
 
     public playerJoin = this.events.channel('player-join', (player: Player) => {}).on(() => this.playerListChange());
     public playerLeave = this.events.channel('player-leave', (player: Player) => {}).on(() => this.playerListChange());
@@ -63,12 +66,22 @@ export default class Server {
 
     public constructor(options?: Partial<ServerOptions>) {
         if (options) this.options = mergeOptions(this.options, options);
+
         this.setupConsole();
         this.module(this.api);
         this.module(new ModuleClient());
+
+        this.loaded.once(() => {
+            this.hasLoaded = true;
+        });
+
+        this.api.connections.ready.on(() => {
+            if (this.hasLoaded) this.ready();
+            else this.loaded.once(() => this.ready());
+        });
+
         this.api.start();
         this.store.read();
-        this.load(this.options.load);
 
         this.attach((game) => {
             game.sessionStart.on((target) => this.playerJoin(game.player.cast(target)));
@@ -76,6 +89,8 @@ export default class Server {
         });
 
         setInterval(() => this.autosave(), this.options.autosave_interval_seconds * 1000);
+
+        this.load(this.options.load);
     }
 
     private setupConsole() {
@@ -135,6 +150,7 @@ export default class Server {
     }
 
     public attach(script: (game: Game, server: Server) => void) {
+        if (this.hasLoaded) script(this.game, this);
         this.loaded.on(() => {
             script(this.game, this);
         });
@@ -147,8 +163,9 @@ export default class Server {
             } catch (err) {
                 if (err instanceof ScriptError) {
                     this.error(err);
+                } else {
+                    throw err;
                 }
-                throw err;
             }
         });
     }
@@ -208,6 +225,10 @@ export default class Server {
 
     public startDebug() {
         this.api.startLogging();
+    }
+
+    public tree() {
+        return new EntityTree(this.game);
     }
 
     public static defaultOptions = (): ServerOptions =>

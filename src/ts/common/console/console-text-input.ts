@@ -51,7 +51,7 @@ export class ConsoleTextInput implements TextInputDescriptor {
     private createButtonElement() {
         return createElement('button', {
             text: this.cancelButtonText,
-            classList: ['btn', 'btn-secondary'],
+            classList: ['btn', 'btn-outline-secondary'],
         });
     }
 

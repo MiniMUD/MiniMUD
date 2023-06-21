@@ -22,6 +22,11 @@ $button-border: lighten($background-input, 16%);
 
 $embed-bar-color: lighten($background-base, 8%);
 
+$background-input-group: darken($background-base, 0%);
+$background-input-group-text: lighten($background-input-group, 8%);
+$text-input-border: $secondary;
+
+
 .console {
     background-color: $background;
     max-width: 100vw !important;
@@ -44,16 +49,8 @@ $embed-bar-color: lighten($background-base, 8%);
         background-color: $background-input;
 
         .input-group {
-
-            .input-group-text {
-                border: none;
-                border-radius: 0;
-            }
-            
             input {
                 @extend .font-monospace;
-                border: none;
-                border-radius: 0;
             }
         }
 
@@ -158,6 +155,20 @@ $embed-bar-color: lighten($background-base, 8%);
     }
 }
 
+$color-object: #ff4876;
+$value: 16%;
+$color: -12deg;
+
+$archetype-colors: (
+    'room': #80ff8b,
+    'npc': #aa66ff,
+    'player': #66aaff,
+    'prop': adjust-color($color: $color-object, $lightness: $value),
+    'item': adjust-color($color: $color-object),
+    'chest': adjust-color($color: $color-object, $hue: $color, $lightness: $value),
+    'backpack': adjust-color($color: $color-object, $hue: $color),
+);
+
 .console.console-client {
     .proper-noun {
         @extend .font-monospace;
@@ -172,33 +183,16 @@ $embed-bar-color: lighten($background-base, 8%);
         font-style: italic;
     }
     .proper-noun.player {
-        color: #66aaff;
         font-style: italic;
     }
     .proper-noun.npc {
-        color: #aa66ff;
         font-style: italic;
     }
 
-    .proper-noun.room {
-        color: #80ff8b;
-    }
-
-    $color-object: #ff4876;
-    $value: 16%;
-    $color: -12deg;
-
-    .proper-noun.prop {
-        color: adjust-color($color: $color-object, $lightness: $value);
-    }
-    .proper-noun.item {
-        color: adjust-color($color: $color-object);
-    }
-    .proper-noun.chest {
-        color: adjust-color($color: $color-object, $hue: $color, $lightness: $value);
-    }
-    .proper-noun.backpack {
-        color: adjust-color($color: $color-object, $hue: $color);
+    @each $archetype, $color in $archetype-colors {
+        .proper-noun.#{$archetype} {
+            color: $color;
+        }
     }
 }
 
@@ -234,7 +228,7 @@ body {
     }
 }
 
-.popserver {
+.host {
     background-color: $background-base;
 
     .list-group {
@@ -252,6 +246,168 @@ body {
     }
 
     .dropzone {
-        min-height: 64px;
+        @extend .p-4;
+        @extend .mt-4;
+
+        border-radius: 16px;
+        border-style: solid;
+        border-color: darken($background-base, 8%);
+        border-width: 1px;
+
+        background-color: darken($background-base, 4%);
     }
+
+    .savelist {
+        @extend .mt-4;
+        min-height: 128px;
+    }
+
+    .link {
+        user-select: all;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    $enable: lighten($background-base, 8%);
+    $disable: darken($background-base, 4%);
+    $focus: lighten($background-base, 16%);
+
+    .tree {
+        @extend .font-monospace;
+        @extend .p-4;
+        color: white;
+        background-color: $background-base;
+        width: 100%;
+        height: 100%;
+        overflow-y: scroll;
+
+        .treenode {
+            user-select: none;
+        }
+
+        .treenode > {
+            div {
+                display: flex;
+                flex-direction: row;
+
+                align-items: stretch;
+                justify-content: stretch;
+
+                .indent {
+                    display: flex;
+                    flex-direction: column;
+
+                    justify-content: center;
+
+                    width: 24px;
+                    margin-right: 6px;
+                }
+
+                .indent::before {
+                    height: calc(100% - 4px);
+
+                    border-width: 2px;
+                    border-color: lighten($background-base, 8%);
+                    border-right-style: solid;
+                    content: '';
+                }
+            }
+            
+            .treenode-handle {
+                @extend .mx-1;
+            }
+
+            .treenode-handle:hover {
+                border-radius: 4px;
+                background-color: $focus;
+            }
+
+            .treenode-handle > .treenode-name {
+                @extend .px-2;
+                border-radius: 4px;
+            }
+
+            .treenode-type {
+                @extend .px-2;
+                display: none;
+            }
+        }
+    }
+
+    @each $archetype, $color in $archetype-colors {
+        .treenode[archetype=#{$archetype}] > {
+            .treenode-type {
+                display: unset;
+                color: $color;
+                opacity: 0.5;
+            }
+
+            .treenode-handle > .treenode-name {
+                background-color: $disable;
+            }
+    
+            .treenode-handle.grabbable > .treenode-name {
+                background-color: $enable;
+            }
+
+            .treenode-handle:hover > .treenode-name {
+                background-color: $focus;
+            }
+        }
+
+        .drag-active .treenode[archetype=#{$archetype}] > {
+            .treenode-handle > .treenode-name {
+                background-color: unset;
+            }
+        }
+
+        .drag-active .treenode[archetype=#{$archetype}].tree-dropzone > {
+            .treenode-handle > .treenode-name {
+                background-color: $enable;
+            }
+        }
+    }
+
+    .scroll {
+        overflow-y: scroll;
+    }
+
+    .component-text {
+        @extend .px-1;
+        width: 100%;
+        border: none;
+    }
+
+    .component-text:focus {
+    }
+}
+
+.input {
+    color: white;
+    background-color: $background-input-group;
+    border-color: $text-input-border;
+}
+
+input[type="text"], input[type="password"] {
+    @extend .py-0;
+    @extend .input;
+}
+
+input:focus[type="text"], input:focus[type="password"] {
+    @extend .input;
+}
+
+.input-group {
+    .input-group-text {
+        color: darken(white, 16%);
+        background-color: $background-input-group-text;
+        border-color: $text-input-border;
+    }
+}
+
+.grabbable {
+    cursor: move;
+    cursor: grab;
+    cursor: -moz-grab;
+    cursor: -webkit-grab;
 }

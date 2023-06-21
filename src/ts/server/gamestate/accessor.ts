@@ -2,6 +2,7 @@ import { Table } from '@/table';
 import { Component } from './component';
 import { Entity } from './gamestate';
 import { nullike } from '@/util/gaurd';
+import { RuntimeType } from '@/common/runtime-types';
 
 export class Accessor<T = unknown, N extends string = string> {
     public constructor(private store: Table<Entity, string, any>, public component: Component<T, N>) {

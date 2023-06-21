@@ -233,4 +233,8 @@ export class Archetype<Properties extends Record<string, Accessor> = {}> impleme
         const e = this.gamestate.entity();
         return this.construct(e);
     }
+
+    public components() {
+        return Object.values(this.accessors);
+    }
 }
